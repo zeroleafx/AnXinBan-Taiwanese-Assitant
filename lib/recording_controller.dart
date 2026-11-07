@@ -65,7 +65,7 @@ class DeviceRecordingBackend implements RecordingBackend {
 }
 
 class RecordingController extends ChangeNotifier {
-  RecordingController(this.backend) {
+  RecordingController(this.backend, {this.transcribe}) {
     _playbackSubscription = backend.playbackCompleted.listen((_) {
       isPlaying = false;
       _notify();
@@ -79,6 +79,41 @@ class RecordingController extends ChangeNotifier {
   }
 
   final RecordingBackend backend;
+  final Future<String> Function(String path)? transcribe;
+  String? transcript;
+  String? speechError;
+  bool recognizing = false;
+
+  Future<void> _recognize(String path) async {
+    final run = transcribe;
+    if (run == null || _disposed) return;
+    recognizing = true;
+    speechError = null;
+    _notify();
+    try {
+      final text = (await run(path)).trim();
+      transcript = text.isEmpty ? null : text;
+      if (text.isEmpty) speechError = '沒有辨識到語音，請再說一次。';
+    } catch (_) {
+      speechError = '這段錄音辨識失敗，可以再試一次。';
+    } finally {
+      recognizing = false;
+      _notify();
+    }
+  }
+
+  Future<void> recognizeLatest() async {
+    final path = lastPath;
+    if (busy || isPlaying || isRecording || path == null || _disposed) return;
+    busy = true;
+    try {
+      await _recognize(path);
+    } finally {
+      busy = false;
+      _notify();
+    }
+  }
+
   Future<void> initialize() async {
     busy = true;
     _notify();
@@ -163,13 +198,20 @@ class RecordingController extends ChangeNotifier {
       if (path == null || path.isEmpty) {
         error = '錄音未能儲存，請重新錄音。';
       } else {
+        _watch.stop();
+        _timer?.cancel();
+        elapsed = _watch.elapsed;
+        isRecording = false;
         lastPath = path;
+        transcript = null;
+        speechError = null;
         error = null;
         try {
           await backend.retainLatest(keepPath: path);
         } catch (_) {
           error = '新錄音已儲存，但舊錄音未能刪除，請重新開啟 App 再試一次。';
         }
+        if (_foreground) await _recognize(path);
       }
     } catch (_) {
       await _cancelSafely();

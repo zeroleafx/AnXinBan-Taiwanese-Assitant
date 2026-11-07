@@ -20,7 +20,10 @@ directory. Only the latest recording is retained: after a new recording saves,
 previous recordings are deleted. Startup also removes older app recordings and
 restores the latest clip for playback. Going to the background stops recording.
 No audio is uploaded.
-Web recordings are session-only browser blobs. Speech recognition and phone
-actions are not connected yet.
+On iPhone, stopping a recording runs Breeze-ASR-26-LiteRT locally and shows its
+Chinese transcript. A restored recording can also be transcribed manually.
+Before the first iOS build from a fresh checkout, run
+`./tool/prepare_breeze_ios.sh` to download the model (1.57 GB) and iOS runtime.
+Web recordings are session-only browser blobs.
 
 Android, iOS, and web scaffolds are included.

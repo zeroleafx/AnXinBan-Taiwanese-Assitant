@@ -7,15 +7,33 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03697EA322754897AEF8D650 /* SpeechFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230E97D7ECD4444BE683CC08 /* SpeechFeatures.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1F521051E2D9E287DE512AF8 /* Options.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3025490C4716367024C2D1B9 /* Options.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+		3404BF13EB563A6FC591AD9D /* Environment.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFE73572B4891BB5FC83A80 /* Environment.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		421C51771072E07159CDDA08 /* CpuOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78E942EB014E63E42E8779F /* CpuOptions.swift */; };
+		52BCCB1096626E70954D7B9B /* CLiteRT.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5B6EC278C54B1983B2F695B /* CLiteRT.xcframework */; };
+		565A00779ED23718BA8CC4BF /* BreezeRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9521CC94180831286AAC5D64 /* BreezeRecognizer.swift */; };
+		5CB2A952B0737D022DEF6AB6 /* CLiteRT.xcframework in Embed Breeze Runtime */ = {isa = PBXBuildFile; fileRef = A5B6EC278C54B1983B2F695B /* CLiteRT.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		65368B1193262E0FC4C1BC2C /* ConcreteOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271CB18221B0C931F39FE0BD /* ConcreteOptions.swift */; };
+		667BD94C596E99BA6A7BC4B5 /* tokens.json in Resources */ = {isa = PBXBuildFile; fileRef = 1FFF7260C1EEA460992F895E /* tokens.json */; };
+		66CB767485E2475B8A8DC223 /* TensorType.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA25C22D5260F9EC1FC02C16 /* TensorType.swift */; };
+		6F66676F1E088AFD4F38CF10 /* TensorBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02CA055F108731EA6F2E267E /* TensorBuffer.swift */; };
+		72B98551282F690E241EFBB1 /* LiteRtError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139BE3CDE0D8C7728C1FBC69 /* LiteRtError.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		94AE03BB7DE0341652D2BA23 /* model.tflite in Resources */ = {isa = PBXBuildFile; fileRef = 33FEDB8E6B54E519D87AC860 /* model.tflite */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		B79AE08BD92687DF85014192 /* mel.bin in Resources */ = {isa = PBXBuildFile; fileRef = 534CABE215F2817B16766F29 /* mel.bin */; };
+		D141750EF74AF88E9F44D1A8 /* OpaqueOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4801D3109B4E6436F2883666 /* OpaqueOptions.swift */; };
+		D5AB7399CE78BE7264D56E4E /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = BA8F1B1496EE09E1B3EB0E98 /* config.json */; };
+		E296AE5E5FBD807109D2F586 /* CompiledModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF881F4DC5BB7B4886A5BC08 /* CompiledModel.swift */; };
+		F33A93DB447B522167AF77EA /* Quantization.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF777C4015EBD3AE970B45CC /* Quantization.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +47,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		2D23D3502F9268D4A4331782 /* Embed Breeze Runtime */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				5CB2A952B0737D022DEF6AB6 /* CLiteRT.xcframework in Embed Breeze Runtime */,
+			);
+			name = "Embed Breeze Runtime";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -42,16 +71,26 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		02CA055F108731EA6F2E267E /* TensorBuffer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TensorBuffer.swift; path = Runtime/TensorBuffer.swift; sourceTree = "<group>"; };
+		139BE3CDE0D8C7728C1FBC69 /* LiteRtError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiteRtError.swift; path = Runtime/LiteRtError.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		1FFF7260C1EEA460992F895E /* tokens.json */ = {isa = PBXFileReference; includeInIndex = 1; name = tokens.json; path = Assets/tokens.json; sourceTree = "<group>"; };
+		230E97D7ECD4444BE683CC08 /* SpeechFeatures.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFeatures.swift; sourceTree = "<group>"; };
+		271CB18221B0C931F39FE0BD /* ConcreteOptions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConcreteOptions.swift; path = Runtime/ConcreteOptions.swift; sourceTree = "<group>"; };
+		3025490C4716367024C2D1B9 /* Options.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Options.swift; path = Runtime/Options.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		33FEDB8E6B54E519D87AC860 /* model.tflite */ = {isa = PBXFileReference; includeInIndex = 1; name = model.tflite; path = Assets/model.tflite; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4801D3109B4E6436F2883666 /* OpaqueOptions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OpaqueOptions.swift; path = Runtime/OpaqueOptions.swift; sourceTree = "<group>"; };
+		534CABE215F2817B16766F29 /* mel.bin */ = {isa = PBXFileReference; includeInIndex = 1; name = mel.bin; path = Assets/mel.bin; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		9521CC94180831286AAC5D64 /* BreezeRecognizer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BreezeRecognizer.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -59,6 +98,13 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A5B6EC278C54B1983B2F695B /* CLiteRT.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; path = CLiteRT.xcframework; sourceTree = "<group>"; };
+		AA25C22D5260F9EC1FC02C16 /* TensorType.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TensorType.swift; path = Runtime/TensorType.swift; sourceTree = "<group>"; };
+		BA8F1B1496EE09E1B3EB0E98 /* config.json */ = {isa = PBXFileReference; includeInIndex = 1; name = config.json; path = Assets/config.json; sourceTree = "<group>"; };
+		BCFE73572B4891BB5FC83A80 /* Environment.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Environment.swift; path = Runtime/Environment.swift; sourceTree = "<group>"; };
+		C78E942EB014E63E42E8779F /* CpuOptions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CpuOptions.swift; path = Runtime/CpuOptions.swift; sourceTree = "<group>"; };
+		EF881F4DC5BB7B4886A5BC08 /* CompiledModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CompiledModel.swift; path = Runtime/CompiledModel.swift; sourceTree = "<group>"; };
+		FF777C4015EBD3AE970B45CC /* Quantization.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Quantization.swift; path = Runtime/Quantization.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +113,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
+				52BCCB1096626E70954D7B9B /* CLiteRT.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,6 +147,7 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				BF474161DD1F8457B2AFEC20 /* Breeze */,
 			);
 			sourceTree = "<group>";
 		};
@@ -126,6 +174,31 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		BF474161DD1F8457B2AFEC20 /* Breeze */ = {
+			isa = PBXGroup;
+			children = (
+				9521CC94180831286AAC5D64 /* BreezeRecognizer.swift */,
+				EF881F4DC5BB7B4886A5BC08 /* CompiledModel.swift */,
+				271CB18221B0C931F39FE0BD /* ConcreteOptions.swift */,
+				C78E942EB014E63E42E8779F /* CpuOptions.swift */,
+				BCFE73572B4891BB5FC83A80 /* Environment.swift */,
+				139BE3CDE0D8C7728C1FBC69 /* LiteRtError.swift */,
+				4801D3109B4E6436F2883666 /* OpaqueOptions.swift */,
+				3025490C4716367024C2D1B9 /* Options.swift */,
+				FF777C4015EBD3AE970B45CC /* Quantization.swift */,
+				02CA055F108731EA6F2E267E /* TensorBuffer.swift */,
+				AA25C22D5260F9EC1FC02C16 /* TensorType.swift */,
+				230E97D7ECD4444BE683CC08 /* SpeechFeatures.swift */,
+				BA8F1B1496EE09E1B3EB0E98 /* config.json */,
+				534CABE215F2817B16766F29 /* mel.bin */,
+				33FEDB8E6B54E519D87AC860 /* model.tflite */,
+				1FFF7260C1EEA460992F895E /* tokens.json */,
+				A5B6EC278C54B1983B2F695B /* CLiteRT.xcframework */,
+			);
+			name = Breeze;
+			path = Breeze;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -157,6 +230,7 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				2D23D3502F9268D4A4331782 /* Embed Breeze Runtime */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
@@ -201,7 +275,7 @@
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
-				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */,
+				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */,
 			);
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
@@ -229,6 +303,10 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				D5AB7399CE78BE7264D56E4E /* config.json in Resources */,
+				B79AE08BD92687DF85014192 /* mel.bin in Resources */,
+				94AE03BB7DE0341652D2BA23 /* model.tflite in Resources */,
+				667BD94C596E99BA6A7BC4B5 /* tokens.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -284,6 +362,18 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
+				565A00779ED23718BA8CC4BF /* BreezeRecognizer.swift in Sources */,
+				E296AE5E5FBD807109D2F586 /* CompiledModel.swift in Sources */,
+				65368B1193262E0FC4C1BC2C /* ConcreteOptions.swift in Sources */,
+				421C51771072E07159CDDA08 /* CpuOptions.swift in Sources */,
+				3404BF13EB563A6FC591AD9D /* Environment.swift in Sources */,
+				72B98551282F690E241EFBB1 /* LiteRtError.swift in Sources */,
+				D141750EF74AF88E9F44D1A8 /* OpaqueOptions.swift in Sources */,
+				1F521051E2D9E287DE512AF8 /* Options.swift in Sources */,
+				F33A93DB447B522167AF77EA /* Quantization.swift in Sources */,
+				6F66676F1E088AFD4F38CF10 /* TensorBuffer.swift in Sources */,
+				66CB767485E2475B8A8DC223 /* TensorType.swift in Sources */,
+				03697EA322754897AEF8D650 /* SpeechFeatures.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -633,7 +723,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */ = {
+		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;
 		};

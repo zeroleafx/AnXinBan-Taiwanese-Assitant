@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 import 'recording_controller.dart';
 
@@ -58,7 +60,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _recording = RecordingController(DeviceRecordingBackend());
+    _recording = RecordingController(
+      DeviceRecordingBackend(),
+      transcribe: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+          ? (path) async =>
+                (await const MethodChannel('anxinban/breeze')
+                    .invokeMethod<String>('transcribe', path))!
+          : null,
+    );
     _recording.addListener(_refresh);
     unawaited(_recording.initialize());
     WidgetsBinding.instance.addObserver(this);
@@ -222,6 +231,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 child: Text(
                                   _isRecording
                                       ? '錄音中 ${_recording.durationLabel}\n再按一下，結束錄音'
+                                      : _recording.recognizing
+                                      ? '正在辨識台語…'
                                       : _hasStopped
                                       ? '已儲存錄音，按一下重新開始'
                                       : '點一下，開始說話',
@@ -242,6 +253,35 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   color: AppColors.ink,
                                 ),
                               ),
+                              if (!_isRecording &&
+                                  _recording.transcribe != null &&
+                                  _hasStopped) ...[
+                                const SizedBox(height: 16),
+                                if (_recording.recognizing)
+                                  const CircularProgressIndicator()
+                                else if (_recording.transcript != null)
+                                  Semantics(
+                                    liveRegion: true,
+                                    child: SelectableText(
+                                      _recording.transcript!,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        color: AppColors.ink,
+                                      ),
+                                    ),
+                                  )
+                                else ...[
+                                  if (_recording.speechError != null)
+                                    Text(_recording.speechError!),
+                                  TextButton(
+                                    onPressed:
+                                        _recording.busy || _recording.isPlaying
+                                        ? null
+                                        : _recording.recognizeLatest,
+                                    child: const Text('辨識這段錄音'),
+                                  ),
+                                ],
+                              ],
                               if (_recording.error != null) ...[
                                 const SizedBox(height: 16),
                                 Semantics(
