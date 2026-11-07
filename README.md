@@ -22,8 +22,8 @@ restores the latest clip for playback. Going to the background stops recording.
 No audio is uploaded.
 On iPhone, stopping a recording runs Breeze-ASR-26-LiteRT locally and shows its
 Chinese transcript. A restored recording can also be transcribed manually.
-Before the first iOS build from a fresh checkout, run
-`./tool/prepare_breeze_ios.sh` to download the model (1.57 GB) and iOS runtime.
+The first iOS build downloads the Breeze model (1.57 GB) and runtime automatically.
+Later builds reuse the local files.
 Web recordings are session-only browser blobs.
 
 Android, iOS, and web scaffolds are included.

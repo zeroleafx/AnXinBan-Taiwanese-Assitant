@@ -1,6 +1,9 @@
 #!/bin/bash
 set -eu
 cd "$(dirname "$0")/../ios/Breeze"
+if [ -f Assets/model.tflite ] && [ -d CLiteRT.xcframework ]; then
+  exit 0
+fi
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 fetch() {
