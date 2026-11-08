@@ -3,6 +3,13 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private let recognizer = BreezeRecognizer()
+
+  override func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
+    super.applicationDidReceiveMemoryWarning(application)
+    speechQueue.async { self.recognizer.releaseModel() }
+  }
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -21,7 +28,7 @@ import UIKit
       }
       speechQueue.async {
         do {
-          let text = try transcribeRecording(at: URL(fileURLWithPath: path))
+          let text = try self.recognizer.transcribe(at: URL(fileURLWithPath: path))
           DispatchQueue.main.async { reply(text) }
         } catch {
           DispatchQueue.main.async { reply(FlutterError(code: "speech", message: error.localizedDescription, details: nil)) }

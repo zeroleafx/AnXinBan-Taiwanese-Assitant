@@ -1,7 +1,9 @@
 #!/bin/bash
 set -eu
 cd "$(dirname "$0")/../ios/Breeze"
-if [ -f Assets/model.tflite ] && [ -d CLiteRT.xcframework ]; then
+mkdir -p .build
+cd .build
+if [ -f ggml-model-q5_0.bin ] && [ -d whisper.xcframework ]; then
   exit 0
 fi
 stage=$(mktemp -d)
@@ -10,12 +12,12 @@ fetch() {
   curl --fail --location --retry 3 --output "$stage/$2" "$1"
   (cd "$stage" && echo "$3  $2" | shasum -a 256 -c -)
 }
-if ! [ -f Assets/model.tflite ]; then
-  fetch 'https://huggingface.co/litert-community/Breeze-ASR-26-LiteRT/resolve/main/breeze_asr_26_30s_i8_kv256.tflite' model.tflite f32de6eaf89ec67f4f90ea5b75c1206850ad094e067c6dc32d7621be7a96a55d
-  mv "$stage/model.tflite" Assets/
+if ! [ -f ggml-model-q5_0.bin ]; then
+  fetch 'https://huggingface.co/doggy8088/Breeze-ASR-26-GGML/resolve/main/ggml-model-q5_0.bin' ggml-model-q5_0.bin 60f25e3a21feca12ec082e6d36f08f94455d9900d6343f7fcb2906f71cc7c449
+  mv "$stage/ggml-model-q5_0.bin" .
 fi
-if ! [ -d CLiteRT.xcframework ]; then
-  fetch 'https://github.com/google-ai-edge/LiteRT/releases/download/v2.3.0/CLiteRT.xcframework.zip' runtime.zip b36a1a4f1b3eeb04546b4cc2986902cd704439b37c34597ab0f804aed08f5a00
+if ! [ -d whisper.xcframework ]; then
+  fetch 'https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-b5454-xcframework.zip' runtime.zip e57f8c48933000acabc13bb913fbe82805d483a2deff692cc6738836bd92393b
   unzip -q "$stage/runtime.zip" -d "$stage"
-  mv "$stage/CLiteRT.xcframework" .
+  mv "$stage/build-apple/whisper.xcframework" .
 fi

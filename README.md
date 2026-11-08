@@ -20,9 +20,9 @@ directory. Only the latest recording is retained: after a new recording saves,
 previous recordings are deleted. Startup also removes older app recordings and
 restores the latest clip for playback. Going to the background stops recording.
 No audio is uploaded.
-On iPhone, stopping a recording runs Breeze-ASR-26-LiteRT locally and shows its
+On iOS 16.4 or later, stopping a recording runs Breeze-ASR-26 GGML Q5 with whisper.cpp locally and shows its
 Chinese transcript. A restored recording can also be transcribed manually.
-The first iOS build downloads the Breeze model (1.57 GB) and runtime automatically.
+The first iOS build downloads the Breeze model (1.08 GB) and runtime automatically.
 Later builds reuse the local files.
 Web recordings are session-only browser blobs.
 
