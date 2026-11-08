@@ -56,18 +56,28 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const _green = AppColors.green;
   bool get _isRecording => _recording.isRecording;
   bool get _hasStopped => _recording.lastPath != null;
+  static const _breeze = MethodChannel('anxinban/breeze');
+  int? _modelDownload;
 
   @override
   void initState() {
     super.initState();
     _recording = RecordingController(
       DeviceRecordingBackend(),
-      transcribe: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+      transcribe:
+          !kIsWeb &&
+              (defaultTargetPlatform == TargetPlatform.iOS ||
+                  defaultTargetPlatform == TargetPlatform.android)
           ? (path) async =>
-                (await const MethodChannel('anxinban/breeze')
-                    .invokeMethod<String>('transcribe', path))!
+                (await _breeze.invokeMethod<String>('transcribe', path))!
           : null,
     );
+    // Android downloads the speech model on first use and reports progress.
+    _breeze.setMethodCallHandler((call) async {
+      if (call.method == 'downloadProgress' && mounted) {
+        setState(() => _modelDownload = call.arguments as int?);
+      }
+    });
     _recording.addListener(_refresh);
     unawaited(_recording.initialize());
     WidgetsBinding.instance.addObserver(this);
@@ -90,6 +100,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _breeze.setMethodCallHandler(null);
     WidgetsBinding.instance.removeObserver(this);
     _recording.removeListener(_refresh);
     _recording.dispose();
@@ -231,6 +242,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 child: Text(
                                   _isRecording
                                       ? '錄音中 ${_recording.durationLabel}\n再按一下，結束錄音'
+                                      : _recording.recognizing &&
+                                            _modelDownload != null
+                                      ? '第一次使用，正在下載語音模型 $_modelDownload%'
                                       : _recording.recognizing
                                       ? '正在辨識台語…'
                                       : _hasStopped
