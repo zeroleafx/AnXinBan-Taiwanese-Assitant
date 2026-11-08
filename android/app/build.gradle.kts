@@ -19,7 +19,8 @@ android {
         applicationId = "com.example.an_xin_ban"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // LiteRT 2.x requires API 24.
+        minSdk = maxOf(24, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -36,6 +37,17 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Share Breeze's small assets (mel.bin, tokens.json, config.json) with iOS.
+    // The model itself is downloaded at runtime, so keep it out of the APK.
+    sourceSets.getByName("main").assets.srcDir("../../ios/Breeze/Assets")
+    androidResources {
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*.tflite"
+    }
+}
+
+dependencies {
+    implementation("com.google.ai.edge.litert:litert:2.3.0")
 }
 
 kotlin {
