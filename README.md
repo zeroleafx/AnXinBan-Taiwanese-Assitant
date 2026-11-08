@@ -24,6 +24,19 @@ On iPhone, stopping a recording runs Breeze-ASR-26-LiteRT locally and shows its
 Chinese transcript. A restored recording can also be transcribed manually.
 The first iOS build downloads the Breeze model (1.57 GB) and runtime automatically.
 Later builds reuse the local files.
+On Android, the same Breeze model runs locally on LiteRT 2.3.0 (CPU, Kotlin
+CompiledModel API). The 1.57 GB model is not bundled in the APK: the first
+transcription downloads it once from Hugging Face into the app's external
+files directory (SHA-256 verified, resumable). To skip the download during
+development, push it with:
+
+```sh
+adb push breeze_asr_26_30s_i8_kv256.tflite \
+  /sdcard/Android/data/com.example.an_xin_ban/files/breeze_asr_26_30s_i8_kv256.tflite
+```
+
+mel.bin, tokens.json and config.json are shared with iOS from ios/Breeze/Assets.
+Android requires API 24+.
 Web recordings are session-only browser blobs.
 
 Android, iOS, and web scaffolds are included.
