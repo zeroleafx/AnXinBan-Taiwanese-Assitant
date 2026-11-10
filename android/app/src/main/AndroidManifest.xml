@@ -2,6 +2,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Downloads the Breeze speech model on first use. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Tells Wi-Fi from mobile data before that download. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:label="安心BAN"
         android:name="${applicationName}"
