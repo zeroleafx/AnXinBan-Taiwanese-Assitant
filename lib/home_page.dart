@@ -588,7 +588,10 @@ class ResultCard extends StatelessWidget {
                 ),
               ),
             for (final child in children)
-              Padding(padding: EdgeInsets.only(top: gap), child: child),
+              Padding(
+                padding: EdgeInsets.only(top: gap),
+                child: child,
+              ),
           ],
         ),
       ),

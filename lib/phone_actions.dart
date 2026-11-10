@@ -35,10 +35,7 @@ class DevicePhoneActions implements PhoneActions {
 
   @override
   Future<bool> openApp(PhoneApp app) => _firstThatOpens(switch (app) {
-    PhoneApp.line => [
-      ('line://', _app),
-      ('https://line.me/R/', _appOnly),
-    ],
+    PhoneApp.line => [('line://', _app), ('https://line.me/R/', _appOnly)],
     PhoneApp.youtube => [
       ('youtube://', _app),
       ('https://www.youtube.com/', _appOnly),

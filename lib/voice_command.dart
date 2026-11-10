@@ -156,9 +156,7 @@ VoiceCommand? _parseCall(String text) {
 
   final name = _trim(target, leading: _callLead);
   final number = spokenDigits(name);
-  return number != null
-      ? DialNumberCommand(number)
-      : CallContactCommand(name);
+  return number != null ? DialNumberCommand(number) : CallContactCommand(name);
 }
 
 /// Returns the destination, an empty string for "open navigation", or null

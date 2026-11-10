@@ -26,7 +26,10 @@ List<ContactEntry> matchContacts(
 }) {
   final query = normalizeTranscript(spoken);
   if (query.isEmpty) return const [];
-  final asked = {query: 0, for (final word in _sameAs[query] ?? const []) word: 10};
+  final asked = {
+    query: 0,
+    for (final word in _sameAs[query] ?? const []) word: 10,
+  };
   final scored = <(int, ContactEntry)>[];
   for (final contact in contacts) {
     if (contact.numbers.isEmpty) continue;

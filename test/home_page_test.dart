@@ -98,7 +98,9 @@ void main() {
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(
-      AnXinBanApp(home: HomePage(recording: recording, assistant: assistant)),
+      AnXinBanApp(
+        home: HomePage(recording: recording, assistant: assistant),
+      ),
     );
   }
 

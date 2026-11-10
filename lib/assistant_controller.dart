@@ -134,10 +134,7 @@ class AssistantController extends ChangeNotifier {
       case OpenAppCommand(:final app):
         return await actions.openApp(app)
             ? done(_appIcon(app), _words('已打開', app.label))
-            : problem(
-                Icons.search_off_rounded,
-                _words('手機裡找不到', app.label),
-              );
+            : problem(Icons.search_off_rounded, _words('手機裡找不到', app.label));
       case CallContactCommand(name: ''):
         return info(Icons.call_rounded, '要打給誰？', detail: '例如：打予阿明');
       case CallContactCommand(:final name):
