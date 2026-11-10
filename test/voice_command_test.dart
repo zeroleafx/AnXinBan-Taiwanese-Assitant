@@ -13,6 +13,23 @@ Matcher goesTo(String place) =>
     isA<NavigateCommand>().having((c) => c.place, 'place', place);
 Matcher searches(String query) =>
     isA<VideoSearchCommand>().having((c) => c.query, 'query', query);
+Matcher sharesWith(String name, {bool line = false}) =>
+    isA<ShareLocationCommand>()
+        .having((c) => c.name, 'name', name)
+        .having((c) => c.viaLine, 'viaLine', line);
+Matcher writes(String name, String body, {bool line = false}) =>
+    isA<SendMessageCommand>()
+        .having((c) => c.name, 'name', name)
+        .having((c) => c.body, 'body', body)
+        .having((c) => c.viaLine, 'viaLine', line);
+Matcher setsContact(String name) =>
+    isA<SetEmergencyContactCommand>().having((c) => c.name, 'name', name);
+Matcher opensNamed(String name, {required bool certain}) =>
+    isA<OpenNamedAppCommand>()
+        .having((c) => c.name, 'name', name)
+        .having((c) => c.certain, 'certain', certain);
+Matcher date({required bool lunar}) =>
+    isA<DateCommand>().having((c) => c.lunar, 'lunar', lunar);
 
 void main() {
   void expectCommand(String transcript, Matcher matcher) =>
@@ -112,15 +129,91 @@ void main() {
     expectCommand('我要去看醫生', isA<UnknownCommand>());
   });
 
-  test('asking where I am is not a trip to "me"', () {
-    expectCommand('我在哪裡', isA<UnknownCommand>());
-    expectCommand('這裡在哪裡？', isA<UnknownCommand>());
+  test('asks where I am', () {
+    expectCommand('我在哪裡', isA<WhereAmICommand>());
+    expectCommand('我現在在哪裡？', isA<WhereAmICommand>());
+    expectCommand('請問這裡是哪裡啊', isA<WhereAmICommand>());
+    expectCommand('我人在哪', isA<WhereAmICommand>());
+    expectCommand('告訴我我在哪裡', isA<WhereAmICommand>());
+    expectCommand('我的位置', isA<WhereAmICommand>());
+    expectCommand('郵局在哪裡', goesTo('郵局'));
+  });
+
+  test('a call for help', () {
+    expectCommand('救命', isA<EmergencyCommand>());
+    expectCommand('救命啊！', isA<EmergencyCommand>());
+    expectCommand('我跌倒了', isA<EmergencyCommand>());
+    expectCommand('SOS', isA<EmergencyCommand>());
+    expectCommand('打給緊急聯絡人', isA<EmergencyCommand>());
+    expectCommand('幫我聯絡緊急連絡人', isA<EmergencyCommand>());
+  });
+
+  test('ambulance and police are called, their stations are places', () {
+    expectCommand('叫救護車', dials('119'));
+    expectCommand('失火了', dials('119'));
+    expectCommand('幫我報警', dials('110'));
+    expectCommand('帶我去消防隊', goesTo('消防隊'));
+    expectCommand('警察局在哪裡', goesTo('警察局'));
+  });
+
+  test('chooses the emergency contact', () {
+    expectCommand('把女兒設成緊急聯絡人', setsContact('女兒'));
+    expectCommand('把我女兒設為緊急連絡人', setsContact('女兒'));
+    expectCommand('緊急聯絡人改成阿明', setsContact('阿明'));
+    expectCommand('設阿明為緊急聯絡人', setsContact('阿明'));
+    expectCommand('設定緊急聯絡人', setsContact(''));
+    expectCommand('我的緊急聯絡人是誰', setsContact(''));
+    expectCommand('誰是我的緊急聯絡人？', setsContact(''));
+    expectCommand('取消緊急聯絡人', isA<ClearEmergencyContactCommand>());
+  });
+
+  test('sends my location', () {
+    expectCommand('把我的位置傳給女兒', sharesWith('女兒'));
+    expectCommand('傳位置給阿明', sharesWith('阿明'));
+    expectCommand('跟女兒說我在哪裡', sharesWith('女兒'));
+    expectCommand('告訴我女兒我在哪裡', sharesWith('女兒'));
+    expectCommand('分享我的位置', sharesWith(''));
+    expectCommand('把位置傳給家人', sharesWith(''));
+    expectCommand('用LINE傳我的位置', sharesWith('', line: true));
+    expectCommand('用 LINE 把位置傳給女兒', sharesWith('', line: true));
+  });
+
+  test('writes a message with the words as they were said', () {
+    expectCommand('傳簡訊給阿明說我晚一點到', writes('阿明', '我晚一點到'));
+    expectCommand('傳簡訊給阿明', writes('阿明', ''));
+    expectCommand('幫我傳訊息給女兒，說我到家了。', writes('女兒', '我到家了。'));
+    expectCommand('傳簡訊給阿明說我在 Costco 等你', writes('阿明', '我在 Costco 等你'));
+    expectCommand('用LINE跟女兒說我到了', writes('', '我到了', line: true));
+    expectCommand('看簡訊', opens(PhoneApp.messages));
+    expectCommand('傳賴給女兒講我到了', writes('', '我到了', line: true));
+    expectCommand('用LINE打給阿明', opens(PhoneApp.line));
+    expectCommand('開LINE講電話', opens(PhoneApp.line));
+    expectCommand('用LINE跟女兒講電話', opens(PhoneApp.line));
+  });
+
+  test('opens other apps by name', () {
+    expectCommand('打開相機', opensNamed('相機', certain: true));
+    expectCommand('相機打開', opensNamed('相機', certain: true));
+    expectCommand('幫我打開 Instagram 好嗎', opensNamed('instagram', certain: true));
+    expectCommand('打開電話', opensNamed('電話', certain: true));
+    expectCommand('開相簿', opensNamed('相簿', certain: false));
+    expectCommand('開冷氣', opensNamed('冷氣', certain: false));
+    expectCommand('幫我開LINE', opens(PhoneApp.line));
+    expectCommand('打開手電筒', torch(on: true));
+  });
+
+  test('names keep their first character', () {
+    expectCommand('打給我女兒', calls('女兒'));
+    expectCommand('打給阮小姐', calls('阮小姐'));
+    expectCommand('打給和平', calls('和平'));
   });
 
   test('answers time, date and weather questions', () {
     expectCommand('現在幾點', isA<TimeCommand>());
-    expectCommand('今天禮拜幾', isA<DateCommand>());
-    expectCommand('今天幾號', isA<DateCommand>());
+    expectCommand('今天禮拜幾', date(lunar: false));
+    expectCommand('今天幾號', date(lunar: false));
+    expectCommand('今天農曆幾號', date(lunar: true));
+    expectCommand('今天初幾', date(lunar: true));
     expectCommand('今天會下雨嗎', isA<WeatherCommand>());
   });
 

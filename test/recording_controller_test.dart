@@ -139,6 +139,26 @@ void main() {
     expect(controller.isRecording, true);
     await controller.stop();
   });
+  test('cancelling throws the recording away without recognizing it', () async {
+    final heard = <String>[];
+    final recognizing = RecordingController(
+      backend,
+      transcribe: (path) async => 'text',
+    )..onTranscript = (text) async => heard.add(text);
+    addTearDown(recognizing.dispose);
+    await recognizing.toggle();
+    await recognizing.cancel();
+    expect(backend.cancellations, 1);
+    expect(backend.stops, 0);
+    expect(recognizing.isRecording, false);
+    expect(recognizing.busy, false);
+    expect(recognizing.lastPath, isNull);
+    expect(heard, isEmpty);
+
+    await recognizing.cancel();
+    expect(backend.cancellations, 1, reason: 'nothing left to cancel');
+  });
+
   test('save failure does not claim a saved recording', () async {
     await controller.toggle();
     backend.failStop = true;

@@ -6,6 +6,8 @@
 	<string>安心BAN需要使用麥克風錄下您的台語語音，錄音只儲存在此裝置。</string>
 	<key>NSContactsUsageDescription</key>
 	<string>安心BAN需要讀取通訊錄，才能照您講的名字幫您打電話。通訊錄不會上傳。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>安心BAN需要知道您的位置，才能告訴您現在在哪裡，或在您要求時把位置寫進訊息。</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
