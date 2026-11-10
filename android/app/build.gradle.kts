@@ -19,11 +19,8 @@ android {
         applicationId = "com.example.an_xin_ban"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // LiteRT 2.x requires API 24.
         minSdk = maxOf(24, flutter.minSdkVersion)
-        ndk {
-            // 64-bit phones, plus the x86_64 emulator.
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -38,19 +35,16 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-        }
-    }
-
-    // Breeze speech recognition: whisper.cpp built from source (see src/main/cpp).
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
+            // R8 breaks LiteRT's dependencies at startup (WorkManager's Room
+            // database is created by reflection), so release builds skip it.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
 
 dependencies {
+    implementation("com.google.ai.edge.litert:litert:2.3.0")
     testImplementation("junit:junit:4.13.2")
 }
 
