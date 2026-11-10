@@ -74,7 +74,7 @@ class MainActivity : FlutterActivity() {
     }
   }
 
-  // Like iOS's memory warning: drop the ~1 GB model when the system needs memory.
+  // Like iOS's memory warning: drop the ~1.6 GB model when the system needs memory.
   override fun onTrimMemory(level: Int) {
     super.onTrimMemory(level)
     if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
@@ -83,7 +83,7 @@ class MainActivity : FlutterActivity() {
   }
 
   companion object {
-    // whisper.cpp calls must be serialized, so all speech work runs on one thread.
+    // LiteRT model creation and inference must stay on one thread.
     private val speechExecutor = Executors.newSingleThreadExecutor()
     // Kept across activity recreation so the loaded model is reused.
     private var recognizer: BreezeRecognizer? = null
