@@ -80,6 +80,9 @@ class RecordingController extends ChangeNotifier {
 
   final RecordingBackend backend;
   final Future<String> Function(String path)? transcribe;
+
+  /// Called with each non-empty transcript, e.g. to run it as a command.
+  Future<void> Function(String transcript)? onTranscript;
   String? transcript;
   String? speechError;
   bool recognizing = false;
@@ -90,16 +93,19 @@ class RecordingController extends ChangeNotifier {
     recognizing = true;
     speechError = null;
     _notify();
+    String? heard;
     try {
       final text = (await run(path)).trim();
-      transcript = text.isEmpty ? null : text;
-      if (text.isEmpty) speechError = '沒有辨識到語音，請再說一次。';
+      heard = text.isEmpty ? null : text;
+      transcript = heard;
+      if (heard == null) speechError = '沒有聽到聲音，請再講一次。';
     } catch (_) {
-      speechError = '這段錄音辨識失敗，可以再試一次。';
+      speechError = '這段沒有聽清楚，可以再試一次。';
     } finally {
       recognizing = false;
       _notify();
     }
+    if (heard != null && !_disposed) unawaited(onTranscript?.call(heard));
   }
 
   Future<void> recognizeLatest() async {
@@ -130,6 +136,9 @@ class RecordingController extends ChangeNotifier {
   bool isRecording = false;
   bool isPlaying = false;
   bool busy = false;
+
+  /// True after the microphone permission was refused.
+  bool micDenied = false;
   String? lastPath;
   String? error;
   Duration elapsed = Duration.zero;
@@ -157,12 +166,14 @@ class RecordingController extends ChangeNotifier {
     }
     busy = true;
     error = null;
+    micDenied = false;
     _notify();
     try {
       await backend.stopPlayback();
       isPlaying = false;
       if (!await backend.hasPermission()) {
-        error = '請到手機設定允許安心BAN使用麥克風，再試一次。';
+        micDenied = true;
+        error = '需要麥克風權限，請到設定打開。';
         return;
       }
       if (_disposed || !_foreground) return;
