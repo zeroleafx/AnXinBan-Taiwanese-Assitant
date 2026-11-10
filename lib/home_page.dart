@@ -6,36 +6,42 @@ import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
 import 'assistant_controller.dart';
+import 'breeze_channel.dart';
 import 'contact_matcher.dart';
 import 'mic_button.dart';
 import 'phone_actions.dart';
 import 'recording_controller.dart';
+import 'speech_model.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.recording, this.assistant});
+  const HomePage({super.key, this.recording, this.assistant, this.model});
 
   /// Injected by tests and previews; the device versions are used otherwise.
   final RecordingController? recording;
   final AssistantController? assistant;
+  final SpeechModelController? model;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  static const _breeze = MethodChannel('anxinban/breeze');
+  BreezeChannel? _breeze;
   late final RecordingController _recording;
   late final AssistantController _assistant;
-  int? _modelDownload;
+  late final SpeechModelController _model;
 
   @override
   void initState() {
     super.initState();
     _assistant = widget.assistant ?? AssistantController(DevicePhoneActions());
     _recording = widget.recording ?? _deviceRecording();
+    _model = widget.model ?? SpeechModelController(_breeze);
     _recording.onTranscript = _assistant.handle;
     _recording.addListener(_refresh);
     _assistant.addListener(_refresh);
+    _model.addListener(_refresh);
+    unawaited(_model.refresh());
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -44,18 +50,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.android);
-    // Android downloads the speech model on first use and reports progress.
-    _breeze.setMethodCallHandler((call) async {
-      if (call.method == 'downloadProgress' && mounted) {
-        setState(() => _modelDownload = call.arguments as int?);
-      }
-    });
+    final breeze = transcribes ? BreezeChannel() : null;
+    breeze?.downloadPercent.addListener(_refresh);
+    _breeze = breeze;
     final recording = RecordingController(
       DeviceRecordingBackend(),
-      transcribe: transcribes
-          ? (path) async =>
-                (await _breeze.invokeMethod<String>('transcribe', path))!
-          : null,
+      transcribe: breeze?.transcribe,
     );
     unawaited(recording.initialize());
     return recording;
@@ -70,6 +70,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Permission dialogs cause "inactive"; only stop when actually backgrounded.
     if (state == AppLifecycleState.resumed) {
       unawaited(_recording.setForeground(true));
+      // The model may have been installed or Wi-Fi joined in the meantime.
+      unawaited(_model.refresh());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       unawaited(_recording.setForeground(false));
@@ -81,12 +83,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _recording.removeListener(_refresh);
     _assistant.removeListener(_refresh);
+    _model.removeListener(_refresh);
     _recording.onTranscript = null;
-    if (widget.recording == null) {
-      _breeze.setMethodCallHandler(null);
-      _recording.dispose();
-    }
+    if (widget.recording == null) _recording.dispose();
     if (widget.assistant == null) _assistant.dispose();
+    if (widget.model == null) _model.dispose();
+    _breeze?.downloadPercent.removeListener(_refresh);
+    _breeze?.dispose();
     super.dispose();
   }
 
@@ -102,8 +105,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (_recording.isRecording) {
       return ('正在聽…', '${_recording.durationLabel} · 講完再點一下');
     }
+    if (_model.phase == ModelPhase.downloading) {
+      return _model.verifying
+          ? ('快好了…', '正在檢查檔案')
+          : ('下載中 ${_model.percent}%', '請保持畫面開著');
+    }
+    if (_model.blocksSpeech) return ('有啥物需要幫忙？', '先下載語音模型才能用');
     if (_recording.recognizing) {
-      final percent = _modelDownload;
+      // Only an Android build that cannot be asked first downloads here.
+      final percent = _breeze?.downloadPercent.value;
       return percent == null
           ? ('辨識中…', '請等一下')
           : ('準備中…', '第一次使用，下載語音模型 $percent%');
@@ -116,10 +126,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final (title, subtitle) = _headline;
+    final downloading = _model.phase == ModelPhase.downloading;
     final micState = _recording.isRecording
         ? MicState.recording
-        : _busy
+        : downloading || (_busy && !_model.blocksSpeech)
         ? MicState.busy
+        : _model.blocksSpeech
+        ? MicState.off
         : MicState.ready;
     return Scaffold(
       body: DecoratedBox(
@@ -157,7 +170,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 MicButton(
                                   size: micSize,
                                   state: micState,
-                                  onPressed: _recording.busy || _busy
+                                  progress: downloading && !_model.verifying
+                                      ? _model.percent / 100
+                                      : null,
+                                  onPressed:
+                                      _recording.busy ||
+                                          _busy ||
+                                          _model.blocksSpeech
                                       ? null
                                       : _tapMic,
                                 ),
@@ -211,6 +230,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ],
       );
     }
+    if (_model.blocksSpeech) return _modelPanel();
     if (_assistant.outcome case final outcome?) {
       // When choosing a contact, the choices are all that matter.
       final choosing = outcome.choices.isNotEmpty;
@@ -280,6 +300,71 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     }
     return const HintsCard(key: ValueKey('hints'));
+  }
+
+  /// Asks before the large speech model download, then shows its progress.
+  Widget _modelPanel() {
+    final model = _model;
+    final status = model.status;
+    final size = status?.sizeLabel ?? '';
+    switch (model.phase) {
+      case ModelPhase.downloading:
+        return ResultCard(
+          key: const ValueKey('model-downloading'),
+          tone: OutcomeTone.info,
+          icon: Icons.downloading_rounded,
+          title: model.verifying ? '檢查檔案中' : '下載語音模型',
+          detail: model.verifying ? '快好了' : '$size，只要下載一次',
+          children: [
+            _DownloadBar(value: model.verifying ? null : model.percent / 100),
+          ],
+        );
+      case ModelPhase.failed:
+        return ResultCard(
+          key: const ValueKey('model-failed'),
+          tone: OutcomeTone.problem,
+          icon: Icons.cloud_off_rounded,
+          title: '下載沒有成功',
+          detail: (model.error ?? '請再試一次').replaceFirst(RegExp(r'。$'), ''),
+          children: [
+            _CardButton(
+              icon: Icons.refresh_rounded,
+              label: '再試一次',
+              onPressed: model.download,
+            ),
+          ],
+        );
+      case ModelPhase.checking || ModelPhase.ready || ModelPhase.missing:
+        final continues = (status?.downloadedBytes ?? 0) > 0;
+        final network = status?.network ?? ModelNetwork.unmetered;
+        return ResultCard(
+          key: const ValueKey('model-missing'),
+          tone: network == ModelNetwork.unmetered
+              ? OutcomeTone.info
+              : OutcomeTone.problem,
+          icon: network == ModelNetwork.none
+              ? Icons.wifi_off_rounded
+              : Icons.download_rounded,
+          title: continues ? '繼續下載語音模型' : '先下載語音模型',
+          detail: switch (network) {
+            ModelNetwork.none => '現在沒有網路',
+            ModelNetwork.metered => '$size，現在不是 Wi-Fi',
+            ModelNetwork.unmetered =>
+              continues ? '已經下載 ${status?.percent ?? 0}%' : '$size，只要下載一次',
+          },
+          children: [
+            _CardButton(
+              icon: Icons.download_rounded,
+              label: network == ModelNetwork.metered
+                  ? '用行動數據下載'
+                  : continues
+                  ? '繼續下載'
+                  : '開始下載',
+              onPressed: model.download,
+            ),
+          ],
+        );
+    }
   }
 
   Widget? _replayButton() {
@@ -597,6 +682,24 @@ class ResultCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DownloadBar extends StatelessWidget {
+  const _DownloadBar({required this.value});
+
+  /// 0..1, or null while the amount of work left is unknown.
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: LinearProgressIndicator(
+      value: value,
+      minHeight: 14,
+      color: AppColors.green,
+      backgroundColor: AppColors.cream,
+    ),
+  );
 }
 
 class _CardButton extends StatelessWidget {
