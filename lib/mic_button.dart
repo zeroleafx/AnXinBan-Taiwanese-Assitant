@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-enum MicState { ready, recording, busy }
+enum MicState { ready, recording, busy, off }
 
-/// The big round microphone button. It pulses while recording and shows a
-/// progress ring while the recording is being understood.
+/// The big round microphone button. It pulses while recording, shows a
+/// progress ring while busy, and is greyed out while it cannot be used.
 class MicButton extends StatefulWidget {
   const MicButton({
     super.key,
     required this.size,
     required this.state,
     required this.onPressed,
+    this.progress,
   });
 
   final double size;
   final MicState state;
   final VoidCallback? onPressed;
+
+  /// How far the busy work has got, 0..1. Null spins without an end.
+  final double? progress;
 
   @override
   State<MicButton> createState() => _MicButtonState();
@@ -63,10 +67,11 @@ class _MicButtonState extends State<MicButton>
     final halo = size * 1.22;
     final recording = widget.state == MicState.recording;
     final busy = widget.state == MicState.busy;
+    final muted = busy || widget.state == MicState.off;
     final accent = recording ? AppColors.coral : AppColors.freshGreen;
     final colors = recording
         ? const [AppColors.coralLight, AppColors.coral]
-        : busy
+        : muted
         ? const [Color(0xFFA8CC94), Color(0xFF7BAA64)]
         : const [AppColors.leaf, AppColors.green];
     const duration = Duration(milliseconds: 300);
@@ -111,10 +116,14 @@ class _MicButtonState extends State<MicButton>
               if (busy)
                 SizedBox.square(
                   dimension: halo - 8,
-                  child: const CircularProgressIndicator(
+                  child: CircularProgressIndicator(
+                    value: widget.progress,
                     strokeWidth: 4,
                     strokeCap: StrokeCap.round,
                     color: AppColors.green,
+                    backgroundColor: widget.progress == null
+                        ? null
+                        : AppColors.freshGreen.withValues(alpha: 0.25),
                   ),
                 ),
               AnimatedContainer(
@@ -130,7 +139,7 @@ class _MicButtonState extends State<MicButton>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.last.withValues(alpha: busy ? 0.15 : 0.4),
+                      color: colors.last.withValues(alpha: muted ? 0.15 : 0.4),
                       blurRadius: size * 0.2,
                       offset: Offset(0, size * 0.07),
                     ),
@@ -146,11 +155,12 @@ class _MicButtonState extends State<MicButton>
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
-                          recording
-                              ? Icons.stop_rounded
-                              : busy
-                              ? Icons.graphic_eq_rounded
-                              : Icons.mic_rounded,
+                          switch (widget.state) {
+                            MicState.recording => Icons.stop_rounded,
+                            MicState.busy => Icons.graphic_eq_rounded,
+                            MicState.off => Icons.mic_off_rounded,
+                            MicState.ready => Icons.mic_rounded,
+                          },
                           key: ValueKey(widget.state),
                           size: size * 0.42,
                           color: Colors.white,
