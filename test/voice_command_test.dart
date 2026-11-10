@@ -77,6 +77,11 @@ void main() {
     expectCommand('我要去看醫生', isA<UnknownCommand>());
   });
 
+  test('asking where I am is not a trip to "me"', () {
+    expectCommand('我在哪裡', isA<UnknownCommand>());
+    expectCommand('這裡在哪裡？', isA<UnknownCommand>());
+  });
+
   test('answers time, date and weather questions', () {
     expectCommand('現在幾點', isA<TimeCommand>());
     expectCommand('今天禮拜幾', isA<DateCommand>());

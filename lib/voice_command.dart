@@ -168,6 +168,8 @@ String? _parsePlace(String text) {
   if (match == null) return null;
   final place = _trim(match.group(1)!, leading: _placeLead);
   if (_notPlaces.any(place.startsWith)) return null;
+  // "我在哪裡" asks where the speaker is; it is not a trip to "我".
+  if (_people.contains(place)) return null;
   return place;
 }
 
@@ -231,6 +233,8 @@ const _notPlaces = [
   '睡覺', '睏', '洗澡', '洗身軀', '吃飯', '食飯', '上廁所', '便所', '運動', '散步', //
   '看醫生', '工作', '上班', '上課', '我的', '你的',
 ];
+
+const _people = {'我', '我們', '你', '你們', '他', '她', '咱', '阮', '這', '這裡', '這邊'};
 
 final _timeWords = RegExp(r'幾點|時間|時陣|幾點鐘');
 final _dateWords = RegExp(r'幾號|日期|禮拜幾|星期幾|拜幾|今天是|今仔日是');
