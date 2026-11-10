@@ -37,6 +37,15 @@ iOS always asks before placing a call; Android opens the dialer with the
 number filled in. Calling by name needs the Contacts permission
 (`NSContactsUsageDescription` on iOS, `READ_CONTACTS` on Android); contacts
 are read on the phone only.
+
+## Speech model download (Android)
+
+When the Android build offers the `modelStatus` and `downloadModel` channel
+methods, the app asks before downloading the speech model: it shows the size,
+warns when the phone is not on Wi-Fi, shows progress, and continues an
+interrupted download. Users can defer setup to record without transcription.
+Android builds without these methods still download during the first
+transcription.
 On iOS/Android, recordings are saved as mono AAC .m4a files in the app documents
 directory. Only the latest recording is retained: after a new recording saves,
 previous recordings are deleted. Startup also removes older app recordings and
@@ -45,16 +54,18 @@ No audio is uploaded.
 On iOS 16.4 or later, stopping a recording runs Breeze-ASR-26 GGML Q5 with whisper.cpp locally and shows its
 Chinese transcript. A restored recording can also be transcribed manually.
 The iOS build prepares the whisper.cpp runtime. On both iOS and Android,
-the app checks for the model at startup. If missing, it offers a 1.08 GB
-download with progress, resume and SHA-256 verification. Users can defer
-the download and record or play audio without transcription.
-Subsequent recordings work offline. The Android build downloads the pinned
-whisper.cpp source and compiles the CPU runtime with the NDK.
-To preload a device during development:
+the app checks for the model at startup. If missing, it offers to download it
+with progress, resume and SHA-256 verification: GGML Q5 (1.08 GB) on iOS, the
+int8 LiteRT model (1.57 GB) on Android. Users can defer the download and record
+or play audio without transcription. Subsequent recordings work offline.
+Android runs Breeze-ASR-26 on LiteRT 2.3.0 (CPU, Kotlin CompiledModel API)
+rather than GGML Q5, because whisper.cpp's fast ARM kernels cover Q4_0/Q8_0
+but not Q5, so Q5 is much slower there.
+To preload an Android device during development:
 
 ```sh
 adb shell mkdir -p /sdcard/Android/data/com.example.an_xin_ban/files
-adb push ios/Breeze/.build/ggml-model-q5_0.bin /sdcard/Android/data/com.example.an_xin_ban/files/
+adb push breeze_asr_26_30s_i8_kv256.tflite /sdcard/Android/data/com.example.an_xin_ban/files/
 ```
 
 Android requires API 24+.
