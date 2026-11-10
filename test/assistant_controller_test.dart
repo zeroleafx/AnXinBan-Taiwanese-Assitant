@@ -134,6 +134,28 @@ void main() {
     expect(assistant.outcome!.action, isNull);
   });
 
+  test('a short "關掉" after switching on turns the light off', () async {
+    await assistant.handle('開手電筒');
+    expect(assistant.torchOn, true);
+    assistant.clear();
+
+    await assistant.handle('關掉');
+    expect(phone.torch, false);
+    expect(assistant.torchOn, false);
+    expect(assistant.outcome!.title, '手電筒關了');
+
+    // With the light off, "關掉" alone means nothing yet.
+    await assistant.handle('關掉');
+    expect(assistant.outcome!.title, '這句我還不會');
+  });
+
+  test('saying just "手電筒" switches it over', () async {
+    await assistant.handle('手電筒');
+    expect(phone.torch, true);
+    await assistant.handle('手電筒');
+    expect(phone.torch, false);
+  });
+
   test('navigation, songs and weather open the right place', () async {
     await assistant.handle('帶我去台北車站');
     expect(phone.places, ['台北車站']);

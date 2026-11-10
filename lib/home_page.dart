@@ -334,6 +334,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ],
       );
     }
+    // The light stays on after its card is gone, so its off button stays too.
+    if (_assistant.torchOn) {
+      return ResultCard(
+        key: const ValueKey('torch'),
+        tone: OutcomeTone.done,
+        icon: Icons.flashlight_on_rounded,
+        title: '手電筒開著',
+        children: [
+          _CardButton(
+            icon: Icons.flashlight_off_rounded,
+            label: '關掉手電筒',
+            onPressed: () => _assistant.runAction(OutcomeAction.torchOff),
+          ),
+        ],
+      );
+    }
     return const HintsCard(key: ValueKey('hints'));
   }
 

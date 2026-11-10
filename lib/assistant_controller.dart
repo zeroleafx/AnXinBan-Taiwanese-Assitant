@@ -44,6 +44,10 @@ class AssistantController extends ChangeNotifier {
   final DateTime Function() _now;
   AssistantOutcome? outcome;
   bool working = false;
+
+  /// Whether this app last switched the flashlight on, so it can still be
+  /// switched off after its card is gone.
+  bool torchOn = false;
   bool _disposed = false;
 
   Future<void> handle(String transcript) async {
@@ -53,7 +57,7 @@ class AssistantController extends ChangeNotifier {
     outcome = null;
     _notify();
     try {
-      outcome = await _run(parseVoiceCommand(heard), heard);
+      outcome = await _run(parseVoiceCommand(heard, torchOn: torchOn), heard);
     } catch (_) {
       outcome = AssistantOutcome(
         tone: OutcomeTone.problem,
@@ -179,7 +183,8 @@ class AssistantController extends ChangeNotifier {
             ? done(Icons.call_rounded, '撥打 $number')
             : problem(Icons.phone_disabled_rounded, '這支手機沒辦法撥號');
       case FlashlightCommand(:final on):
-        return _torch(on: on, heard: heard);
+        // Just "手電筒" switches it over.
+        return _torch(on: on ?? !torchOn, heard: heard);
       case NavigateCommand(:final place):
         return await actions.navigate(place)
             ? done(Icons.near_me_rounded, '帶你去$place')
@@ -217,10 +222,12 @@ class AssistantController extends ChangeNotifier {
       return AssistantOutcome(
         tone: OutcomeTone.problem,
         icon: Icons.flashlight_off_rounded,
-        title: '這支手機開不了手電筒',
+        title: on ? '這支手機開不了手電筒' : '手電筒關不掉',
+        detail: on ? null : '從螢幕上方往下滑，按手電筒關掉',
         heard: heard,
       );
     }
+    torchOn = on;
     return AssistantOutcome(
       tone: OutcomeTone.done,
       icon: on ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
