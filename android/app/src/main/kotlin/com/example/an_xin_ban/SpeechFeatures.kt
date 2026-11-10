@@ -9,7 +9,6 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -145,61 +144,4 @@ private class FloatList {
     data[size++] = v
   }
   fun toArray(): FloatArray = data.copyOf(size)
-}
-
-/** Whisper log-mel features (80 x 3000), matching ios/Breeze/SpeechFeatures.swift. */
-class SpeechFeatures(private val mel: FloatArray) {
-  companion object {
-    // Fourier coefficients include Whisper's periodic 400-sample Hann window.
-    private val basis: FloatArray by lazy {
-      FloatArray(402 * 400) { idx ->
-        val row = idx / 400
-        val i = idx % 400
-        val phase = 2 * PI * (row % 201) * i / 400
-        val hann = 0.5 - 0.5 * cos(2 * PI * i / 400)
-        (hann * if (row < 201) cos(phase) else sin(phase)).toFloat()
-      }
-    }
-  }
-
-  fun compute(samples: FloatArray): FloatArray {
-    val frames = min(3000, (samples.size + 359) / 160)
-    val frame = FloatArray(400)
-    val power = FloatArray(201)
-    val energy = FloatArray(80 * frames)
-    for (t in 0 until frames) {
-      for (i in 0 until 400) {
-        var j = abs(t * 160 + i - 200)
-        if (j >= WINDOW) j = 959998 - j
-        frame[i] = if (j < samples.size) samples[j] else 0f
-      }
-      for (k in 0 until 201) {
-        var re = 0f
-        var im = 0f
-        val c = k * 400
-        val s = (k + 201) * 400
-        for (i in 0 until 400) {
-          re += basis[c + i] * frame[i]
-          im += basis[s + i] * frame[i]
-        }
-        power[k] = re * re + im * im
-      }
-      for (band in 0 until 80) {
-        var e = 0f
-        val m = band * 201
-        for (k in 0 until 201) e += mel[m + k] * power[k]
-        energy[band * frames + t] = e
-      }
-    }
-    val peak = energy.maxOrNull() ?: 0f
-    val floorValue = max(-10f, log10(max(1e-10f, peak)) - 8)
-    val values = FloatArray(80 * 3000) { (floorValue + 4) / 4 }
-    for (band in 0 until 80) {
-      for (t in 0 until frames) {
-        values[band * 3000 + t] =
-          (max(floorValue, log10(max(1e-10f, energy[band * frames + t]))) + 4) / 4
-      }
-    }
-    return values
-  }
 }
