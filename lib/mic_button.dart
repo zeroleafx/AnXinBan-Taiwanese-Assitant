@@ -1,69 +1,34 @@
 import 'package:flutter/material.dart';
 
+import 'dart:async';
+
 import 'app_theme.dart';
+import 'recording_controller.dart';
 
 enum MicState { ready, recording, busy }
 
 /// The big round microphone button. It pulses while recording and shows a
 /// progress ring while the recording is being understood.
-class MicButton extends StatefulWidget {
+class MicButton extends StatelessWidget {
   const MicButton({
     super.key,
+    required this.backend,
     required this.size,
     required this.state,
     required this.onPressed,
   });
 
+  final RecordingBackend backend;
   final double size;
   final MicState state;
   final VoidCallback? onPressed;
 
   @override
-  State<MicButton> createState() => _MicButtonState();
-}
-
-class _MicButtonState extends State<MicButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _syncPulse();
-  }
-
-  @override
-  void didUpdateWidget(MicButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncPulse();
-  }
-
-  void _syncPulse() {
-    if (widget.state == MicState.recording) {
-      if (!_pulse.isAnimating) _pulse.repeat();
-    } else {
-      _pulse
-        ..stop()
-        ..value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final size = widget.size;
     final halo = size * 1.22;
-    final recording = widget.state == MicState.recording;
-    final busy = widget.state == MicState.busy;
-    final accent = recording ? AppColors.coral : AppColors.freshGreen;
+    final recording = state == MicState.recording;
+    final busy = state == MicState.busy;
+    final accent = AppColors.freshGreen;
     final colors = recording
         ? const [AppColors.coralLight, AppColors.coral]
         : busy
@@ -73,9 +38,9 @@ class _MicButtonState extends State<MicButton>
 
     return Semantics(
       button: true,
-      enabled: widget.onPressed != null,
+      enabled: onPressed != null,
       label: recording ? '停止錄音' : '開始錄音',
-      onTap: widget.onPressed,
+      onTap: onPressed,
       child: ExcludeSemantics(
         child: SizedBox.square(
           dimension: halo,
@@ -83,18 +48,6 @@ class _MicButtonState extends State<MicButton>
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
-              if (recording)
-                AnimatedBuilder(
-                  animation: _pulse,
-                  builder: (context, _) => Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
-                    children: [
-                      for (final offset in const [0.0, 0.5])
-                        _ring(halo, (_pulse.value + offset) % 1, accent),
-                    ],
-                  ),
-                ),
               AnimatedContainer(
                 duration: duration,
                 width: halo,
@@ -108,6 +61,7 @@ class _MicButtonState extends State<MicButton>
                   ),
                 ),
               ),
+              if (recording) _MicLevelRing(backend: backend, size: size),
               if (busy)
                 SizedBox.square(
                   dimension: halo - 8,
@@ -141,17 +95,13 @@ class _MicButtonState extends State<MicButton>
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
-                    onTap: widget.onPressed,
+                    onTap: onPressed,
                     child: Center(
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
-                          recording
-                              ? Icons.stop_rounded
-                              : busy
-                              ? Icons.graphic_eq_rounded
-                              : Icons.mic_rounded,
-                          key: ValueKey(widget.state),
+                          busy ? Icons.graphic_eq_rounded : Icons.mic_rounded,
+                          key: ValueKey(state),
                           size: size * 0.42,
                           color: Colors.white,
                         ),
@@ -166,20 +116,54 @@ class _MicButtonState extends State<MicButton>
       ),
     );
   }
+}
 
-  Widget _ring(double base, double t, Color color) {
-    final diameter = base * (1 + 0.32 * t);
-    return IgnorePointer(
-      child: Container(
-        width: diameter,
-        height: diameter,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: color.withValues(alpha: (1 - t) * 0.5),
-            width: 3,
-          ),
-        ),
+class _MicLevelRing extends StatefulWidget {
+  const _MicLevelRing({required this.backend, required this.size});
+  final RecordingBackend backend;
+  final double size;
+
+  @override
+  State<_MicLevelRing> createState() => _MicLevelRingState();
+}
+
+class _MicLevelRingState extends State<_MicLevelRing> {
+  double level = 0;
+  late final StreamSubscription<double> subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    subscription = widget.backend.decibels.listen(
+      (db) {
+        if (!mounted) return;
+        setState(() {
+          level = db.isFinite ? ((db + 55) / 50).clamp(0.0, 1.0) : 0;
+        });
+      },
+      onError: (Object _) {
+        // Metering is optional; recording continues if the device cannot report it.
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(subscription.cancel());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final diameter = widget.size * (1.04 + 0.15 * level);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeOut,
+      width: diameter,
+      height: diameter,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.freshGreen,
       ),
     );
   }

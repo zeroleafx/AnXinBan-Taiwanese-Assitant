@@ -1,3 +1,4 @@
+import AVFoundation
 import Flutter
 import UIKit
 
@@ -22,16 +23,26 @@ import UIKit
     guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BreezeSpeech") else { return }
     let channel = FlutterMethodChannel(name: "anxinban/breeze", binaryMessenger: registrar.messenger())
     channel.setMethodCallHandler { call, reply in
+      if call.method == "modelPath" {
+        do { reply(try self.recognizer.modelURL().path) }
+        catch { reply(FlutterError(code: "storage", message: error.localizedDescription, details: nil)) }
+        return
+      }
       guard call.method == "transcribe", let path = call.arguments as? String else {
         reply(FlutterMethodNotImplemented)
         return
       }
-      speechQueue.async {
-        do {
-          let text = try self.recognizer.transcribe(at: URL(fileURLWithPath: path))
-          DispatchQueue.main.async { reply(text) }
-        } catch {
-          DispatchQueue.main.async { reply(FlutterError(code: "speech", message: error.localizedDescription, details: nil)) }
+      let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+      asset.loadTracks(withMediaType: .audio) { tracks, error in
+        speechQueue.async {
+          do {
+            if let error { throw error }
+            guard let track = tracks?.first else { throw SpeechError("錄音沒有音軌。") }
+            let text = try self.recognizer.transcribe(asset, track: track)
+            DispatchQueue.main.async { reply(text) }
+          } catch {
+            DispatchQueue.main.async { reply(FlutterError(code: "speech", message: error.localizedDescription, details: nil)) }
+          }
         }
       }
     }

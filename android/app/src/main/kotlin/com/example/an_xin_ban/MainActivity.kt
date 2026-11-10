@@ -46,8 +46,7 @@ class MainActivity : FlutterActivity() {
           }
           speechExecutor.execute {
             try {
-              // Still downloads a missing model, for callers that did not ask first.
-              speech.ensureModel(reportProgress)
+              if (speech.modelStatus()["ready"] != true) throw SpeechError("請先下載語音模型。")
               main.post { channel.invokeMethod("downloadProgress", null) }
               val text = speech.transcribe(path)
               main.post { result.success(text) }

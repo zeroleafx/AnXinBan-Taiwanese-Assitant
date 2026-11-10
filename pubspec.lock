@@ -34,12 +34,11 @@ packages:
     source: hosted
     version: "5.3.0"
   audioplayers_darwin:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: audioplayers_darwin
-      sha256: "1ca553add991384ecf421b9569da850f3ab2472ffb83f6970b0416365abc51be"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/audioplayers_darwin"
+      relative: true
+    source: path
     version: "6.5.0"
   audioplayers_linux:
     dependency: transitive
@@ -114,7 +113,7 @@ packages:
     source: hosted
     version: "1.19.1"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: e3626ae6270383c9e3a549f34c9e4cd26c09ae6a9adaab2bf4737a00340efdc4
@@ -430,12 +429,11 @@ packages:
     source: hosted
     version: "2.2.0"
   record_ios:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: record_ios
-      sha256: "21d189f49a598af4697dac4cc9e48389ac0a1fb3e916622b5504a58d9b96313e"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/record_ios"
+      relative: true
+    source: path
     version: "2.1.1"
   record_linux:
     dependency: transitive

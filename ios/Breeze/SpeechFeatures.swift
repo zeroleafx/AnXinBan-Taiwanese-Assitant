@@ -8,9 +8,7 @@ struct SpeechError: LocalizedError {
 }
 
 // Read 16 kHz mono PCM in bounded windows, even for long AAC recordings.
-func readSpeechWindows(_ url: URL, consume: ([Float]) throws -> Void) throws {
-  let asset = AVURLAsset(url: url)
-  guard let track = asset.tracks(withMediaType: .audio).first else { throw SpeechError("錄音沒有音軌。") }
+func readSpeechWindows(_ asset: AVAsset, track: AVAssetTrack, consume: ([Float]) throws -> Void) throws {
   let reader = try AVAssetReader(asset: asset)
   let output = AVAssetReaderTrackOutput(
     track: track,

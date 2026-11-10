@@ -44,20 +44,19 @@ restores the latest clip for playback. Going to the background stops recording.
 No audio is uploaded.
 On iOS 16.4 or later, stopping a recording runs Breeze-ASR-26 GGML Q5 with whisper.cpp locally and shows its
 Chinese transcript. A restored recording can also be transcribed manually.
-The first iOS build downloads the Breeze model (1.08 GB) and runtime automatically.
-Later builds reuse the local files.
-On Android, the same Breeze model runs locally on LiteRT 2.3.0 (CPU, Kotlin
-CompiledModel API). The 1.57 GB model is not bundled in the APK: the first
-transcription downloads it once from Hugging Face into the app's external
-files directory (SHA-256 verified, resumable). To skip the download during
-development, push it with:
+The iOS build prepares the whisper.cpp runtime. On both iOS and Android,
+the app checks for the model at startup. If missing, it offers a 1.08 GB
+download with progress, resume and SHA-256 verification. Users can defer
+the download and record or play audio without transcription.
+Subsequent recordings work offline. The Android build downloads the pinned
+whisper.cpp source and compiles the CPU runtime with the NDK.
+To preload a device during development:
 
 ```sh
-adb push breeze_asr_26_30s_i8_kv256.tflite \
-  /sdcard/Android/data/com.example.an_xin_ban/files/breeze_asr_26_30s_i8_kv256.tflite
+adb shell mkdir -p /sdcard/Android/data/com.example.an_xin_ban/files
+adb push ios/Breeze/.build/ggml-model-q5_0.bin /sdcard/Android/data/com.example.an_xin_ban/files/
 ```
 
-mel.bin, tokens.json and config.json are shared with iOS from ios/Breeze/Assets.
 Android requires API 24+.
 Web recordings are session-only browser blobs.
 

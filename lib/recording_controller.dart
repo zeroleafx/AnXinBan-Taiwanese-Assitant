@@ -9,6 +9,7 @@ import 'recording_storage.dart';
 
 abstract class RecordingBackend {
   Future<String?> retainLatest({String? keepPath});
+  Stream<double> get decibels;
   Future<bool> hasPermission();
   Future<void> start();
   Future<String?> stop();
@@ -28,6 +29,11 @@ class DeviceRecordingBackend implements RecordingBackend {
   @override
   Future<String?> retainLatest({String? keepPath}) =>
       _storage.retainLatest(keepPath: keepPath);
+
+  @override
+  Stream<double> get decibels => _recorder
+      .onAmplitudeChanged(const Duration(milliseconds: 100))
+      .map((amplitude) => amplitude.current);
 
   @override
   Future<bool> hasPermission() => _recorder.hasPermission();
@@ -79,7 +85,7 @@ class RecordingController extends ChangeNotifier {
   }
 
   final RecordingBackend backend;
-  final Future<String> Function(String path)? transcribe;
+  Future<String> Function(String path)? transcribe;
 
   /// Called with each non-empty transcript, e.g. to run it as a command.
   Future<void> Function(String transcript)? onTranscript;
@@ -146,6 +152,8 @@ class RecordingController extends ChangeNotifier {
   bool _foreground = true;
   final _watch = Stopwatch();
   Timer? _timer;
+  Timer? _limitTimer;
+  static const maxDuration = Duration(minutes: 1);
   late final StreamSubscription<void> _playbackSubscription;
   late final StreamSubscription<RecordState> _stateSubscription;
 
@@ -187,6 +195,7 @@ class RecordingController extends ChangeNotifier {
       _watch
         ..reset()
         ..start();
+      _limitTimer = Timer(maxDuration, () => unawaited(stop()));
       _timer = Timer.periodic(const Duration(milliseconds: 250), (_) {
         elapsed = _watch.elapsed;
         _notify();
@@ -204,6 +213,7 @@ class RecordingController extends ChangeNotifier {
     if (busy || !isRecording || _disposed) return;
     busy = true;
     _notify();
+    _limitTimer?.cancel();
     try {
       final path = await backend.stop();
       if (path == null || path.isEmpty) {
@@ -284,6 +294,7 @@ class RecordingController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _limitTimer?.cancel();
     _timer?.cancel();
     _watch.stop();
     unawaited(_playbackSubscription.cancel());

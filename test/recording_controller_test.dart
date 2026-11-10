@@ -12,6 +12,9 @@ class FakeBackend implements RecordingBackend {
     return retained;
   }
 
+  @override
+  Stream<double> get decibels => const Stream.empty();
+
   bool permission = true;
   bool failStart = false;
   bool failStop = false;
@@ -70,6 +73,15 @@ void main() {
   });
   tearDown(() => controller.dispose());
 
+  testWidgets('60 seconds stops and saves once', (tester) async {
+    await controller.toggle();
+    await tester.pump(const Duration(seconds: 59));
+    expect(backend.stops, 0);
+    await tester.pump(const Duration(seconds: 1));
+    expect(backend.stops, 1);
+    expect(controller.lastPath, backend.retained);
+    expect(controller.isRecording, false);
+  });
   test('denied permission never starts the microphone', () async {
     backend.permission = false;
     await controller.toggle();

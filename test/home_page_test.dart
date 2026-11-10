@@ -12,6 +12,8 @@ import 'package:an_xin_ban/recording_controller.dart';
 import 'package:an_xin_ban/voice_command.dart';
 
 class QuietBackend implements RecordingBackend {
+  @override
+  Stream<double> get decibels => const Stream.empty();
   final _states = StreamController<RecordState>.broadcast();
   final _done = StreamController<void>.broadcast();
   @override

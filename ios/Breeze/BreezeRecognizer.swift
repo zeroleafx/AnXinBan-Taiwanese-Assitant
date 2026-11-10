@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import whisper
 
@@ -12,11 +13,20 @@ final class BreezeRecognizer {
 
   deinit { releaseModel() }
 
+  func modelURL() throws -> URL {
+    var directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                                 appropriateFor: nil, create: true)
+      .appendingPathComponent("Breeze", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    var values = URLResourceValues()
+    values.isExcludedFromBackup = true
+    try directory.setResourceValues(values)
+    return directory.appendingPathComponent("ggml-model-q5_0.bin")
+  }
+
   private func loadModel() throws -> OpaquePointer {
     if let context { return context }
-    guard let path = Bundle.main.path(forResource: "ggml-model-q5_0", ofType: "bin") else {
-      throw SpeechError("找不到台語辨識模型。")
-    }
+    let path = try modelURL().path
     var options = whisper_context_default_params()
     options.use_gpu = false
     guard let loaded = whisper_init_from_file_with_params(path, options) else {
@@ -26,7 +36,7 @@ final class BreezeRecognizer {
     return loaded
   }
 
-  func transcribe(at url: URL) throws -> String {
+  func transcribe(_ asset: AVAsset, track: AVAssetTrack) throws -> String {
     let model = try loadModel()
     var parts = [String]()
     try "zh".withCString { language in
@@ -38,7 +48,7 @@ final class BreezeRecognizer {
       options.translate = false
       options.print_progress = false
       options.print_realtime = false
-      try readSpeechWindows(url) { samples in
+      try readSpeechWindows(asset, track: track) { samples in
         let status = samples.withUnsafeBufferPointer {
           whisper_full(model, options, $0.baseAddress, Int32($0.count))
         }
