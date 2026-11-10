@@ -21,6 +21,7 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BreezeSpeech") else { return }
+    registerTorch(registrar.messenger())
     let channel = FlutterMethodChannel(name: "anxinban/breeze", binaryMessenger: registrar.messenger())
     channel.setMethodCallHandler { call, reply in
       if call.method == "modelPath" {
@@ -44,6 +45,47 @@ import UIKit
             DispatchQueue.main.async { reply(FlutterError(code: "speech", message: error.localizedDescription, details: nil)) }
           }
         }
+      }
+    }
+  }
+
+  // The flashlight on "anxinban/torch". Every call is answered exactly once,
+  // and "isOn" reads the light itself, so a switch from the control centre
+  // shows up in the app.
+  private func registerTorch(_ messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "anxinban/torch", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, reply in
+      guard call.method == "set" || call.method == "isOn" else {
+        reply(FlutterMethodNotImplemented)
+        return
+      }
+      guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
+        reply(call.method == "set" ? false : nil)
+        return
+      }
+      if call.method == "isOn" {
+        // The light itself, which also follows the control centre; torchMode
+        // is only what this app last asked for.
+        reply(device.isTorchActive)
+        return
+      }
+      let on = call.arguments as? Bool ?? false
+      do {
+        try device.lockForConfiguration()
+        defer { device.unlockForConfiguration() }
+        if on {
+          // Unavailable while the phone is too hot or the camera is busy.
+          guard device.isTorchAvailable else {
+            reply(false)
+            return
+          }
+          try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel)
+        } else {
+          device.torchMode = .off
+        }
+        reply(true)
+      } catch {
+        reply(false)
       }
     }
   }

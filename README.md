@@ -28,10 +28,16 @@ into a phone action and `lib/phone_actions.dart` performs it:
 | 幫我開 LINE、開 YouTube、上臉書、開地圖、看簡訊 | Opens the app (or says it is not installed) |
 | 打電話予阿明、打給女兒、給阿明打電話 | Finds the name in Contacts; asks which one if several match; dials |
 | 打 119、撥零九一二… | Dials the spoken number |
-| 開手電筒、手電筒關掉 | Turns the flashlight on or off (with a one-tap off button) |
+| 開手電筒、手電筒關掉、手電筒禁掉；開著時只講「關掉」 | Turns the flashlight on or off; just 「手電筒」 switches it over. While it is on, an off button stays on screen |
 | 帶我去台北車站、郵局在哪裡 | Opens directions in Google Maps (Apple Maps if not installed) |
 | 我想聽鄧麗君的歌 | Searches YouTube |
 | 現在幾點、今天禮拜幾、今天會下雨嗎 | Shows the time or date; opens a weather search |
+
+The flashlight goes through the app's own channel `anxinban/torch`
+(`ios/Runner/AppDelegate.swift`, `android/.../TorchControl.kt`) rather than a
+plugin, so the app can also read whether the light is on. When the app comes
+back to the front it checks, so switching the light off from the control
+centre also updates the screen.
 
 iOS always asks before placing a call; Android opens the dialer with the
 number filled in. Calling by name needs the Contacts permission

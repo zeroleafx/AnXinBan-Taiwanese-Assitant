@@ -79,6 +79,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       unawaited(_recording.setForeground(true));
       // The model may have been installed or Wi-Fi joined in the meantime.
       unawaited(_model.refresh());
+      // The flashlight may have been switched from the control centre.
+      unawaited(_assistant.syncTorch());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       unawaited(_recording.setForeground(false));

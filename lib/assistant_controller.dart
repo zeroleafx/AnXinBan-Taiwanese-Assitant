@@ -102,6 +102,26 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
+  /// Catches up with the light after it was switched outside the app, for
+  /// example from the control centre, so the screen does not keep saying
+  /// "手電筒開了" over a dark light.
+  Future<void> syncTorch() async {
+    if (working) return;
+    final on = await actions.torchIsOn();
+    if (_disposed || working || on == null || on == torchOn) return;
+    torchOn = on;
+    final shown = outcome;
+    if (!on && shown != null && shown.action == OutcomeAction.torchOff) {
+      outcome = AssistantOutcome(
+        tone: OutcomeTone.done,
+        icon: Icons.flashlight_off_rounded,
+        title: '手電筒關了',
+        heard: shown.heard,
+      );
+    }
+    _notify();
+  }
+
   void clear() {
     if (outcome == null) return;
     outcome = null;

@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:torch_light/torch_light.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'contact_matcher.dart';
+import 'torch_channel.dart';
 import 'voice_command.dart';
 
 class ContactsAccess {
@@ -21,6 +21,10 @@ abstract interface class PhoneActions {
   Future<bool> dial(String number);
   Future<ContactsAccess> loadContacts();
   Future<bool> setTorch({required bool on});
+
+  /// Whether the flashlight is on right now, or null when the phone cannot
+  /// say. It can be switched outside the app, from the control centre.
+  Future<bool?> torchIsOn();
   Future<bool> navigate(String place);
   Future<bool> searchVideo(String query);
   Future<bool> searchWeb(String query);
@@ -86,18 +90,10 @@ class DevicePhoneActions implements PhoneActions {
   }
 
   @override
-  Future<bool> setTorch({required bool on}) async {
-    try {
-      if (on) {
-        await TorchLight.enableTorch();
-      } else {
-        await TorchLight.disableTorch();
-      }
-      return true;
-    } on Exception {
-      return false;
-    }
-  }
+  Future<bool> setTorch({required bool on}) => const TorchChannel().set(on: on);
+
+  @override
+  Future<bool?> torchIsOn() => const TorchChannel().isOn();
 
   @override
   Future<bool> navigate(String place) {

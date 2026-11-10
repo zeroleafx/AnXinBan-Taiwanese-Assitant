@@ -42,6 +42,12 @@ class FakePhone implements PhoneActions {
     return true;
   }
 
+  /// False for a phone that cannot tell whether its light is on.
+  bool canReadTorch = true;
+
+  @override
+  Future<bool?> torchIsOn() async => canReadTorch ? torch ?? false : null;
+
   @override
   Future<bool> navigate(String place) async {
     places.add(place);
@@ -154,6 +160,38 @@ void main() {
     expect(phone.torch, true);
     await assistant.handle('手電筒');
     expect(phone.torch, false);
+  });
+
+  test('a light switched off in the control centre updates the card', () async {
+    await assistant.handle('開手電筒');
+    expect(assistant.outcome!.title, '手電筒開了');
+
+    phone.torch = false; // switched off outside the app
+    await assistant.syncTorch();
+    expect(assistant.torchOn, false);
+    expect(assistant.outcome!.title, '手電筒關了');
+    expect(assistant.outcome!.action, isNull, reason: 'no off button left');
+    expect(assistant.outcome!.heard, '開手電筒');
+  });
+
+  test('a light switched on outside the app is noticed', () async {
+    phone.torch = true;
+    await assistant.syncTorch();
+    expect(assistant.torchOn, true);
+    expect(assistant.outcome, isNull);
+
+    await assistant.handle('關掉');
+    expect(phone.torch, false);
+  });
+
+  test('when the phone cannot tell, nothing changes', () async {
+    await assistant.handle('開手電筒');
+    phone
+      ..canReadTorch = false
+      ..torch = false;
+    await assistant.syncTorch();
+    expect(assistant.torchOn, true);
+    expect(assistant.outcome!.title, '手電筒開了');
   });
 
   test('navigation, songs and weather open the right place', () async {
