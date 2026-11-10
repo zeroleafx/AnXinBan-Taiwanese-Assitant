@@ -37,6 +37,15 @@ iOS always asks before placing a call; Android opens the dialer with the
 number filled in. Calling by name needs the Contacts permission
 (`NSContactsUsageDescription` on iOS, `READ_CONTACTS` on Android); contacts
 are read on the phone only.
+
+## Speech model download (Android)
+
+When the Android build offers the `modelStatus` and `downloadModel` channel
+methods, the app asks before downloading the speech model: it shows the size,
+warns when the phone is not on Wi-Fi, shows progress, and continues an
+interrupted download. Users can defer setup to record without transcription.
+Android builds without these methods still download during the first
+transcription.
 On iOS/Android, recordings are saved as mono AAC .m4a files in the app documents
 directory. Only the latest recording is retained: after a new recording saves,
 previous recordings are deleted. Startup also removes older app recordings and

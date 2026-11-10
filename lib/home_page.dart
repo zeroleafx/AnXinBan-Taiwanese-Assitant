@@ -6,188 +6,66 @@ import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
 import 'assistant_controller.dart';
+import 'breeze_channel.dart';
 import 'contact_matcher.dart';
 import 'mic_button.dart';
-import 'model_download_stub.dart' if (dart.library.io) 'model_download.dart';
 import 'phone_actions.dart';
 import 'recording_controller.dart';
+import 'speech_model.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.recording, this.assistant});
+  const HomePage({super.key, this.recording, this.assistant, this.model});
 
   /// Injected by tests and previews; the device versions are used otherwise.
   final RecordingController? recording;
   final AssistantController? assistant;
+  final SpeechModelController? model;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  static const _breeze = MethodChannel('anxinban/breeze');
+  BreezeChannel? _breeze;
   late final RecordingController _recording;
   late final AssistantController _assistant;
-  int? _modelDownload;
-  String? _modelPath;
-  String? _downloadError;
-  bool _showSetup = false;
-  bool _checking = false;
-
-  bool get _supportsSpeech =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.android);
+  late final SpeechModelController _model;
+  bool _deferred = false;
 
   @override
   void initState() {
     super.initState();
     _assistant = widget.assistant ?? AssistantController(DevicePhoneActions());
     _recording = widget.recording ?? _deviceRecording();
-    if (widget.recording == null && _supportsSpeech) {
-      _showSetup = true;
-      unawaited(_checkModel());
-    }
+    _model = widget.model ?? SpeechModelController(_breeze);
     _recording.onTranscript = _assistant.handle;
     _recording.addListener(_refresh);
     _assistant.addListener(_refresh);
+    _model.addListener(_modelChanged);
+    unawaited(_model.refresh());
     WidgetsBinding.instance.addObserver(this);
   }
 
   RecordingController _deviceRecording() {
-    if (_android) {
-      _breeze.setMethodCallHandler((call) async {
-        if (call.method == 'downloadProgress' &&
-            mounted &&
-            call.arguments is int) {
-          setState(() => _modelDownload = call.arguments as int);
-        }
-      });
-    }
+    final transcribes =
+        !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android);
+    final breeze = transcribes ? BreezeChannel() : null;
+    breeze?.downloadPercent.addListener(_refresh);
+    _breeze = breeze;
     final recording = RecordingController(DeviceRecordingBackend());
     unawaited(recording.initialize());
     return recording;
   }
 
-  bool get _android =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-
-  Future<String> _transcribe(String path) async =>
-      (await _breeze.invokeMethod<String>('transcribe', path))!;
-
-  Future<void> _checkModel() async {
-    setState(() {
-      _checking = true;
-      _downloadError = null;
-    });
-    try {
-      final bool ready;
-      if (_android) {
-        final status = await _breeze.invokeMapMethod<String, dynamic>(
-          'modelStatus',
-        );
-        ready = status?['ready'] == true;
-      } else {
-        _modelPath = (await _breeze.invokeMethod<String>('modelPath'))!;
-        ready = await modelExists(_modelPath!);
-      }
-      if (!mounted) return;
-      if (ready) {
-        _recording.transcribe = _transcribe;
-        _showSetup = false;
-      }
-    } catch (_) {
-      _downloadError = '無法讀取模型儲存位置，請再試一次。';
-    } finally {
-      if (mounted) setState(() => _checking = false);
+  void _modelChanged() {
+    if (_breeze != null) {
+      _recording.transcribe = _model.phase == ModelPhase.ready
+          ? _breeze!.transcribe
+          : null;
     }
-  }
-
-  Future<void> _download() async {
-    if (_modelDownload != null) return;
-    if (!_android && _modelPath == null) await _checkModel();
-    if (!mounted || !_showSetup || (!_android && _modelPath == null)) return;
-    setState(() {
-      _modelDownload = 0;
-      _downloadError = null;
-    });
-    try {
-      if (_android) {
-        await _breeze.invokeMethod<void>('downloadModel');
-      } else {
-        await downloadModel(_modelPath!, (value) {
-          if (mounted) setState(() => _modelDownload = value);
-        });
-      }
-      if (!mounted) return;
-      _recording.transcribe = _transcribe;
-      _showSetup = false;
-    } catch (_) {
-      _downloadError = '下載未完成，請確認網路連線和可用空間後重試。';
-    } finally {
-      if (mounted) setState(() => _modelDownload = null);
-    }
-  }
-
-  Widget _modelSetup() {
-    final progress = _modelDownload;
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.download_for_offline_outlined,
-                    size: 56,
-                    color: AppColors.green,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _checking
-                        ? '正在檢查語音模型'
-                        : progress == null
-                        ? '下載台語語音模型？'
-                        : '正在準備語音模型',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '模型約 1.08 GB，建議使用 Wi-Fi。完成後即可在手機上離線辨識台語。',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  if (_checking)
-                    const CircularProgressIndicator()
-                  else if (progress != null) ...[
-                    LinearProgressIndicator(
-                      value: progress / 100,
-                      semanticsLabel: '模型下載進度',
-                    ),
-                    const SizedBox(height: 8),
-                    Text('$progress%'),
-                  ] else ...[
-                    if (_downloadError != null)
-                      Text(_downloadError!, textAlign: TextAlign.center),
-                    FilledButton(
-                      onPressed: _download,
-                      child: Text(_downloadError == null ? '下載模型' : '重試'),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => _showSetup = false),
-                      child: const Text('稍後下載，先使用錄音'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    _refresh();
   }
 
   void _refresh() {
@@ -199,6 +77,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Permission dialogs cause "inactive"; only stop when actually backgrounded.
     if (state == AppLifecycleState.resumed) {
       unawaited(_recording.setForeground(true));
+      // The model may have been installed or Wi-Fi joined in the meantime.
+      unawaited(_model.refresh());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       unawaited(_recording.setForeground(false));
@@ -210,12 +90,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _recording.removeListener(_refresh);
     _assistant.removeListener(_refresh);
+    _model.removeListener(_modelChanged);
     _recording.onTranscript = null;
-    if (widget.recording == null) {
-      _breeze.setMethodCallHandler(null);
-      _recording.dispose();
-    }
+    if (widget.recording == null) _recording.dispose();
     if (widget.assistant == null) _assistant.dispose();
+    if (widget.model == null) _model.dispose();
+    _breeze?.downloadPercent.removeListener(_refresh);
+    _breeze?.dispose();
     super.dispose();
   }
 
@@ -232,7 +113,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return ('正在聽…', '${_recording.durationLabel} / 01:00 · 講完再點一下');
     }
     if (_recording.recognizing) {
-      final percent = _modelDownload;
+      final percent = _breeze?.downloadPercent.value;
       return percent == null
           ? ('辨識中…', '請等一下')
           : ('準備中…', '第一次使用，下載語音模型 $percent%');
@@ -244,7 +125,33 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (_showSetup) return _modelSetup();
+    if (!_deferred && _model.phase != ModelPhase.ready) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 380),
+                child: _model.phase == ModelPhase.checking
+                    ? const Center(child: CircularProgressIndicator())
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _modelPanel(),
+                          if (_model.phase != ModelPhase.downloading)
+                            TextButton(
+                              onPressed: () => setState(() => _deferred = true),
+                              child: const Text('稍後下載，先使用錄音'),
+                            ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     final (title, subtitle) = _headline;
     final micState = _recording.isRecording
         ? MicState.recording
@@ -271,14 +178,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 return Column(
                   children: [
                     const _TopBar(),
-                    if (widget.recording == null &&
-                        _supportsSpeech &&
-                        _recording.transcribe == null &&
+                    if (_deferred &&
+                        _model.phase != ModelPhase.ready &&
                         !_recording.isRecording)
                       TextButton(
                         onPressed: _recording.busy || _recording.isPlaying
                             ? null
-                            : () => setState(() => _showSetup = true),
+                            : () => setState(() => _deferred = false),
                         child: const Text('下載語音模型以啟用辨識'),
                       ),
                     // Everything scales down instead of scrolling on small
@@ -429,6 +335,71 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     }
     return const HintsCard(key: ValueKey('hints'));
+  }
+
+  /// Asks before the large speech model download, then shows its progress.
+  Widget _modelPanel() {
+    final model = _model;
+    final status = model.status;
+    final size = status?.sizeLabel ?? '';
+    switch (model.phase) {
+      case ModelPhase.downloading:
+        return ResultCard(
+          key: const ValueKey('model-downloading'),
+          tone: OutcomeTone.info,
+          icon: Icons.downloading_rounded,
+          title: model.verifying ? '檢查檔案中' : '下載中 ${model.percent}%',
+          detail: model.verifying ? '快好了' : '$size，只要下載一次',
+          children: [
+            _DownloadBar(value: model.verifying ? null : model.percent / 100),
+          ],
+        );
+      case ModelPhase.failed:
+        return ResultCard(
+          key: const ValueKey('model-failed'),
+          tone: OutcomeTone.problem,
+          icon: Icons.cloud_off_rounded,
+          title: '下載沒有成功',
+          detail: (model.error ?? '請再試一次').replaceFirst(RegExp(r'。$'), ''),
+          children: [
+            _CardButton(
+              icon: Icons.refresh_rounded,
+              label: '再試一次',
+              onPressed: model.download,
+            ),
+          ],
+        );
+      case ModelPhase.checking || ModelPhase.ready || ModelPhase.missing:
+        final continues = (status?.downloadedBytes ?? 0) > 0;
+        final network = status?.network ?? ModelNetwork.unmetered;
+        return ResultCard(
+          key: const ValueKey('model-missing'),
+          tone: network == ModelNetwork.unmetered
+              ? OutcomeTone.info
+              : OutcomeTone.problem,
+          icon: network == ModelNetwork.none
+              ? Icons.wifi_off_rounded
+              : Icons.download_rounded,
+          title: continues ? '繼續下載語音模型' : '先下載語音模型',
+          detail: switch (network) {
+            ModelNetwork.none => '現在沒有網路',
+            ModelNetwork.metered => '$size，現在不是 Wi-Fi',
+            ModelNetwork.unmetered =>
+              continues ? '已經下載 ${status?.percent ?? 0}%' : '$size，只要下載一次',
+          },
+          children: [
+            _CardButton(
+              icon: Icons.download_rounded,
+              label: network == ModelNetwork.metered
+                  ? '用行動數據下載'
+                  : continues
+                  ? '繼續下載'
+                  : '開始下載',
+              onPressed: model.download,
+            ),
+          ],
+        );
+    }
   }
 
   Widget? _replayButton() {
@@ -816,6 +787,24 @@ class _ContactButton extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _DownloadBar extends StatelessWidget {
+  const _DownloadBar({required this.value});
+
+  /// 0..1, or null while the amount of work left is unknown.
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: LinearProgressIndicator(
+      value: value,
+      minHeight: 14,
+      color: AppColors.green,
+      backgroundColor: AppColors.cream,
     ),
   );
 }

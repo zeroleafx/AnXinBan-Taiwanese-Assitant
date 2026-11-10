@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:an_xin_ban/assistant_controller.dart';
@@ -9,6 +10,7 @@ import 'package:an_xin_ban/home_page.dart';
 import 'package:an_xin_ban/main.dart';
 import 'package:an_xin_ban/phone_actions.dart';
 import 'package:an_xin_ban/recording_controller.dart';
+import 'package:an_xin_ban/speech_model.dart';
 import 'package:an_xin_ban/voice_command.dart';
 
 class QuietBackend implements RecordingBackend {
@@ -74,10 +76,44 @@ class Phone implements PhoneActions {
   Future<void> openSettings() async {}
 }
 
+/// An Android phone whose speech model is not downloaded yet.
+class ModelStore implements SpeechModelBackend {
+  ModelStore(this.network);
+  ModelNetwork network;
+  int downloadedBytes = 0;
+  bool ready = false;
+  String? failWith;
+
+  /// Reports this much, then waits for [finish].
+  int reaches = 37;
+  Completer<void> finish = Completer<void>();
+
+  @override
+  Future<ModelStatus?> status() async => ModelStatus(
+    ready: ready,
+    totalBytes: 1080732108,
+    downloadedBytes: downloadedBytes,
+    network: network,
+  );
+
+  @override
+  Future<void> download(void Function(int percent) onPercent) async {
+    onPercent(reaches);
+    await finish.future;
+    finish = Completer<void>();
+    final message = failWith;
+    if (message != null) {
+      throw PlatformException(code: 'download', message: message);
+    }
+    ready = true;
+  }
+}
+
 void main() {
   late Phone phone;
   late AssistantController assistant;
   late RecordingController recording;
+  SpeechModelController? model;
   var heard = '';
 
   setUp(() {
@@ -87,10 +123,12 @@ void main() {
       QuietBackend(),
       transcribe: (_) async => heard,
     );
+    model = null;
   });
   tearDown(() {
     assistant.dispose();
     recording.dispose();
+    model?.dispose();
   });
 
   Future<void> open(WidgetTester tester, Size size, {double text = 1}) async {
@@ -101,9 +139,14 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(
       AnXinBanApp(
-        home: HomePage(recording: recording, assistant: assistant),
+        home: HomePage(
+          recording: recording,
+          assistant: assistant,
+          model: model,
+        ),
       ),
     );
+    await tester.pump();
   }
 
   Future<void> say(WidgetTester tester, String words) async {
@@ -144,6 +187,96 @@ void main() {
       expect(find.text('關掉手電筒'), findsOneWidget);
     });
   }
+
+  for (final (name, size) in [
+    ('small phone', const Size(320, 568)),
+    ('iPhone 16', const Size(393, 852)),
+  ]) {
+    testWidgets('the model download fits on a $name with large text', (
+      tester,
+    ) async {
+      final store = ModelStore(ModelNetwork.metered);
+      model = SpeechModelController(store);
+      await open(tester, size, text: 1.6);
+      expect(find.text('先下載語音模型'), findsOneWidget);
+      expect(find.textContaining('不是 Wi-Fi'), findsOneWidget);
+
+      await tester.tap(find.text('用行動數據下載'));
+      await tester.pump();
+      expect(find.text('下載中 37%'), findsOneWidget);
+
+      store.failWith = '下載中斷，再試一次會接著下載。';
+      store.downloadedBytes = 400000000;
+      store.finish.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('下載沒有成功'), findsOneWidget);
+      expect(find.textContaining('中斷'), findsOneWidget);
+    });
+  }
+
+  testWidgets('speech stays off until the model is downloaded', (tester) async {
+    final store = ModelStore(ModelNetwork.unmetered);
+    model = SpeechModelController(store);
+    await open(tester, const Size(393, 852));
+    expect(find.text('1.1 GB，只要下載一次'), findsOneWidget);
+
+    expect(find.bySemanticsLabel('開始錄音'), findsNothing);
+    await tester.pump();
+    expect(find.text('正在聽…'), findsNothing);
+
+    store.reaches = 100;
+    await tester.tap(find.text('開始下載'));
+    await tester.pump();
+    expect(find.text('檢查檔案中'), findsOneWidget);
+
+    store.finish.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('可以這樣講'), findsOneWidget);
+    await say(tester, '幫我開LINE');
+    expect(find.text('已打開 LINE'), findsOneWidget);
+  });
+
+  testWidgets('download can be deferred to record and reopened later', (
+    tester,
+  ) async {
+    final store = ModelStore(ModelNetwork.unmetered);
+    model = SpeechModelController(store);
+    await open(tester, const Size(393, 852));
+    await tester.tap(find.text('稍後下載，先使用錄音'));
+    await tester.pump();
+    expect(find.bySemanticsLabel('開始錄音'), findsOneWidget);
+    await tester.tap(find.text('下載語音模型以啟用辨識'));
+    await tester.pump();
+    expect(find.text('開始下載'), findsOneWidget);
+    expect(model!.phase, ModelPhase.missing);
+  });
+
+  testWidgets('an interrupted download offers to continue', (tester) async {
+    final store = ModelStore(ModelNetwork.unmetered)
+      ..downloadedBytes = 540366054;
+    model = SpeechModelController(store);
+    await open(tester, const Size(393, 852));
+    expect(find.text('繼續下載語音模型'), findsOneWidget);
+    expect(find.text('已經下載 50%'), findsOneWidget);
+    expect(find.text('繼續下載'), findsOneWidget);
+  });
+
+  testWidgets('returning to the app notices a model installed meanwhile', (
+    tester,
+  ) async {
+    final store = ModelStore(ModelNetwork.none);
+    model = SpeechModelController(store);
+    await open(tester, const Size(393, 852));
+    expect(find.text('現在沒有網路'), findsOneWidget);
+
+    store.ready = true;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('可以這樣講'), findsOneWidget);
+  });
 
   testWidgets('saying "開 LINE" opens LINE and says so', (tester) async {
     await open(tester, const Size(393, 852));
