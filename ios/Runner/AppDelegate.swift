@@ -5,6 +5,8 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let recognizer = BreezeRecognizer()
+  private var torchWatch: NSKeyValueObservation?
+  private var torchLeaving: NSObjectProtocol?
 
   override func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
     super.applicationDidReceiveMemoryWarning(application)
@@ -54,6 +56,25 @@ import UIKit
   // shows up in the app.
   private func registerTorch(_ messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: "anxinban/torch", binaryMessenger: messenger)
+    if let device = AVCaptureDevice.default(for: .video), device.hasTorch {
+      // While the app still asks for the light, iOS lights it again when the
+      // app comes back. So when it goes dark outside the app (control centre)
+      // or the app leaves the screen, stop asking: off then stays off.
+      torchWatch = device.observe(\.isTorchActive, options: [.new]) { device, change in
+        guard change.newValue == false else { return }
+        DispatchQueue.main.async {
+          if device.torchMode == .on && !device.isTorchActive {
+            AppDelegate.stopAskingForTorch(device)
+          }
+        }
+      }
+      if let old = torchLeaving { NotificationCenter.default.removeObserver(old) }
+      torchLeaving = NotificationCenter.default.addObserver(
+        forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
+      ) { _ in
+        if device.torchMode == .on { AppDelegate.stopAskingForTorch(device) }
+      }
+    }
     channel.setMethodCallHandler { call, reply in
       guard call.method == "set" || call.method == "isOn" else {
         reply(FlutterMethodNotImplemented)
@@ -87,6 +108,16 @@ import UIKit
       } catch {
         reply(false)
       }
+    }
+  }
+
+  private static func stopAskingForTorch(_ device: AVCaptureDevice) {
+    do {
+      try device.lockForConfiguration()
+      device.torchMode = .off
+      device.unlockForConfiguration()
+    } catch {
+      // Left as it is; the app's next switch reports any problem.
     }
   }
 }

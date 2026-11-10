@@ -37,7 +37,9 @@ The flashlight goes through the app's own channel `anxinban/torch`
 (`ios/Runner/AppDelegate.swift`, `android/.../TorchControl.kt`) rather than a
 plugin, so the app can also read whether the light is on. When the app comes
 back to the front it checks, so switching the light off from the control
-centre also updates the screen.
+centre also updates the screen. On iOS the app also stops asking for the
+light once it goes dark outside the app or the app leaves the screen;
+otherwise iOS lights it again when the app comes back.
 
 iOS always asks before placing a call; Android opens the dialer with the
 number filled in. Calling by name needs the Contacts permission
