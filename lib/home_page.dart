@@ -9,6 +9,7 @@ import 'assistant_controller.dart';
 import 'breeze_channel.dart';
 import 'contact_matcher.dart';
 import 'mic_button.dart';
+import 'web_transcription.dart';
 import 'phone_actions.dart';
 import 'recording_controller.dart';
 import 'speech_model.dart';
@@ -54,7 +55,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final breeze = transcribes ? BreezeChannel() : null;
     breeze?.downloadPercent.addListener(_refresh);
     _breeze = breeze;
-    final recording = RecordingController(DeviceRecordingBackend());
+    final recording = RecordingController(
+      DeviceRecordingBackend(),
+      transcribe: kIsWeb && spaceUrl.isNotEmpty ? uploadForTranscription : null,
+      autoTranscribe: !kIsWeb,
+    );
     unawaited(recording.initialize());
     return recording;
   }
@@ -310,7 +315,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         children: [
           _CardButton(
             icon: Icons.refresh_rounded,
-            label: '再試一次',
+            label: kIsWeb ? '重新上傳並辨識' : '再試一次',
             onPressed: recording.recognizeLatest,
           ),
         ],
@@ -330,7 +335,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           if (recording.transcribe != null)
             _CardButton(
               icon: Icons.hearing_rounded,
-              label: '辨識這段錄音',
+              label: kIsWeb ? '上傳至 Hugging Face 並辨識' : '辨識這段錄音',
               onPressed: recording.recognizeLatest,
             ),
         ],

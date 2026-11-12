@@ -58,7 +58,7 @@ On iOS/Android, recordings are saved as mono AAC .m4a files in the app documents
 directory. Only the latest recording is retained: after a new recording saves,
 previous recordings are deleted. Startup also removes older app recordings and
 restores the latest clip for playback. Going to the background stops recording.
-No audio is uploaded.
+Mobile recognition runs on-device. On web, recording and playback stay local until the user selects the upload button.
 On iOS 16.4 or later, stopping a recording runs Breeze-ASR-26 GGML Q5 with whisper.cpp locally and shows its
 Chinese transcript. A restored recording can also be transcribed manually.
 The iOS build prepares the whisper.cpp runtime. On both iOS and Android,
@@ -80,3 +80,15 @@ Android requires API 24+.
 Web recordings are session-only browser blobs.
 
 Android, iOS, and web scaffolds are included.
+
+
+### Web transcription on Hugging Face Spaces
+
+Deploy the contents of `space/` to a Docker Space on CPU Basic.
+Use its HTTPS app URL when building the Flutter web app:
+
+```sh
+flutter build web --dart-define=BREEZE_SPACE_URL=https://YOUR-SPACE.hf.space
+```
+
+With no URL configured, web remains recording/playback only.

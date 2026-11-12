@@ -19,18 +19,25 @@ Future<bool> modelExists(String path) async {
   return await file.exists() && await file.length() == modelBytes;
 }
 
-Future<void> downloadModel(String path, void Function(int) progress) async {
-  if (await modelExists(path)) return;
+Future<void> downloadModel(
+  String path,
+  void Function(int) progress, {
+  Uri? source,
+  int expectedBytes = modelBytes,
+  String expectedSha256 = _hash,
+}) async {
+  final target = File(path);
+  if (await target.exists() && await target.length() == expectedBytes) return;
   final part = File('$path.part');
   var done = await part.exists() ? await part.length() : 0;
-  if (done > modelBytes) {
+  if (done > expectedBytes) {
     await part.delete();
     done = 0;
   }
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
   try {
-    if (done < modelBytes) {
-      final request = await client.getUrl(_url);
+    if (done < expectedBytes) {
+      final request = await client.getUrl(source ?? _url);
       if (done > 0) request.headers.set('Range', 'bytes=$done-');
       final response = await request.close().timeout(
         const Duration(seconds: 60),
@@ -51,7 +58,7 @@ Future<void> downloadModel(String path, void Function(int) progress) async {
         await sink.addStream(
           response.timeout(const Duration(seconds: 60)).map((chunk) {
             done += chunk.length;
-            final percent = (done * 100 ~/ modelBytes).clamp(0, 99);
+            final percent = (done * 100 ~/ expectedBytes).clamp(0, 99);
             if (lastPercent != percent) {
               progress(percent);
               lastPercent = percent;
@@ -63,10 +70,11 @@ Future<void> downloadModel(String path, void Function(int) progress) async {
         await sink.close();
       }
     }
-    if (done < modelBytes) throw HttpException('下載中斷');
+    if (done < expectedBytes) throw HttpException('下載中斷');
     progress(100);
-    if (done != modelBytes ||
-        (await sha256.bind(part.openRead()).first).toString() != _hash) {
+    if (done != expectedBytes ||
+        (await sha256.bind(part.openRead()).first).toString() !=
+            expectedSha256) {
       await part.delete();
       throw const FormatException('模型驗證失敗');
     }
