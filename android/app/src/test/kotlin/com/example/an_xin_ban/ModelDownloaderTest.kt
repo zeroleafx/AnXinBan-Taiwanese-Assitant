@@ -2,6 +2,9 @@ package com.example.an_xin_ban
 
 import java.io.File
 import java.net.InetAddress
+import java.net.ConnectException
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.MessageDigest
@@ -175,8 +178,22 @@ class ModelDownloaderTest {
 
   @Test
   fun `an unreachable server is reported as a network problem`() {
-    server.close()
-    assertTrue(failure().contains("網路"))
+    var disconnected = false
+    val connection = object : HttpURLConnection(URL(server.url)) {
+      override fun connect() = Unit
+      override fun usingProxy() = false
+      override fun disconnect() { disconnected = true }
+      override fun getResponseCode(): Int = throw ConnectException("Connection refused")
+    }
+    val downloader = ModelDownloader(
+      server.url, sha, content.size.toLong(), target,
+      openConnection = { connection },
+    )
+
+    assertEquals("連不上網路，請確認網路後再試一次。", failure(downloader))
+    assertTrue(disconnected)
+    assertFalse(target.exists())
+    assertFalse(part.exists())
   }
 
   private fun sha256(bytes: ByteArray): String =

@@ -22,6 +22,9 @@ class ModelDownloader(
   private val sha256: String,
   val size: Long,
   private val target: File,
+  private val openConnection: (URL) -> HttpURLConnection = {
+    it.openConnection() as HttpURLConnection
+  },
   private val freeSpace: () -> Long = {
     target.absoluteFile.parentFile?.usableSpace ?: Long.MAX_VALUE
   },
@@ -63,7 +66,7 @@ class ModelDownloader(
   }
 
   private fun download(from: Long, onPercent: (Int) -> Unit) {
-    val conn = URL(url).openConnection() as HttpURLConnection
+    val conn = openConnection(URL(url))
     conn.instanceFollowRedirects = true
     conn.connectTimeout = 30_000
     conn.readTimeout = 60_000
