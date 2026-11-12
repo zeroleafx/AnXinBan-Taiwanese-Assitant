@@ -64,8 +64,16 @@ class Phone implements PhoneActions {
     ContactEntry(name: '陳志明', numbers: ['0933-222-111']),
     ContactEntry(name: '林明華', numbers: ['0988-765-432']),
   ]);
+  bool? torch;
   @override
-  Future<bool> setTorch({required bool on}) async => true;
+  Future<bool> setTorch({required bool on}) async {
+    torch = on;
+    return true;
+  }
+
+  @override
+  Future<bool?> torchIsOn() async => torch ?? false;
+
   @override
   Future<bool> navigate(String place) async => true;
   @override
@@ -305,5 +313,47 @@ void main() {
     expect(find.text('可以這樣講'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('停止錄音'));
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('the flashlight keeps its off button after its card is gone', (
+    tester,
+  ) async {
+    await open(tester, const Size(393, 852));
+    await say(tester, '開手電筒');
+    expect(phone.torch, true);
+    expect(find.text('手電筒開了'), findsOneWidget);
+
+    // A new recording clears the result, but the light is still on.
+    await tester.tap(find.bySemanticsLabel('開始錄音'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('手電筒開了'), findsNothing);
+    expect(find.text('手電筒開著'), findsOneWidget);
+
+    await tester.tap(find.text('關掉手電筒'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(phone.torch, false);
+    expect(find.text('手電筒關了'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('停止錄音'));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('coming back after the control centre switched the light off', (
+    tester,
+  ) async {
+    await open(tester, const Size(393, 852));
+    await say(tester, '開手電筒');
+    expect(find.text('手電筒開了'), findsOneWidget);
+
+    phone.torch = false; // pulled down the control centre and switched it off
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('手電筒開了'), findsNothing);
+    expect(find.text('手電筒關了'), findsOneWidget);
+    expect(find.text('關掉手電筒'), findsNothing);
   });
 }

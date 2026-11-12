@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 // Palette: https://colorhunt.co/palette/2a7c1376c457fff8cffbe6c2
 abstract final class AppColors {
@@ -29,6 +30,13 @@ ThemeData buildTheme() {
   );
   return ThemeData(
     useMaterial3: true,
+    // Bundle the Chinese font to avoid platform font substitution.
+    fontFamily:
+        !kIsWeb &&
+            (defaultTargetPlatform == TargetPlatform.iOS ||
+                defaultTargetPlatform == TargetPlatform.macOS)
+        ? 'NotoSansTC'
+        : null,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.paleYellow,
     filledButtonTheme: FilledButtonThemeData(

@@ -7,7 +7,7 @@ Matcher calls(String name) =>
     isA<CallContactCommand>().having((c) => c.name, 'name', name);
 Matcher dials(String number) =>
     isA<DialNumberCommand>().having((c) => c.number, 'number', number);
-Matcher torch({required bool on}) =>
+Matcher torch({required bool? on}) =>
     isA<FlashlightCommand>().having((c) => c.on, 'on', on);
 Matcher goesTo(String place) =>
     isA<NavigateCommand>().having((c) => c.place, 'place', place);
@@ -61,6 +61,41 @@ void main() {
     expectCommand('手電筒關掉', torch(on: false));
     expectCommand('把电筒关掉', torch(on: false));
     expectCommand('開電火', torch(on: true));
+  });
+
+  test('understands the ways people switch the flashlight off', () {
+    expectCommand('手電筒禁掉', torch(on: false));
+    expectCommand('共電火禁掉', torch(on: false));
+    expectCommand('手電筒不用了', torch(on: false));
+    expectCommand('不用手電筒了', torch(on: false));
+    expectCommand('手電筒熄掉', torch(on: false));
+    expectCommand('手電筒收起來', torch(on: false));
+    expectCommand('不要開手電筒', torch(on: false));
+    expectCommand('手电筒灭掉', torch(on: false));
+  });
+
+  test('dark rooms and power cuts ask for light', () {
+    expectCommand('好暗，幫我開手電筒', torch(on: true));
+    expectCommand('停電了開手電筒', torch(on: true));
+    expectCommand('點電火', torch(on: true));
+  });
+
+  test('just naming the flashlight switches it over', () {
+    expectCommand('手電筒', torch(on: null));
+    expectCommand('手電筒好了', torch(on: null));
+  });
+
+  test('a short "關掉" reaches the flashlight only while it is on', () {
+    for (final words in ['關掉', '關燈', '幫我關起來', '不用了']) {
+      expect(
+        parseVoiceCommand(words, torchOn: true),
+        torch(on: false),
+        reason: words,
+      );
+      expect(parseVoiceCommand(words), isA<UnknownCommand>(), reason: words);
+    }
+    // Other requests still work while the light is on.
+    expect(parseVoiceCommand('打給阿明', torchOn: true), calls('阿明'));
   });
 
   test('navigates to a place', () {

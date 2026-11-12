@@ -38,8 +38,10 @@ final class DialNumberCommand extends VoiceCommand {
 }
 
 final class FlashlightCommand extends VoiceCommand {
-  const FlashlightCommand({required this.on});
-  final bool on;
+  const FlashlightCommand({this.on});
+
+  /// Null when the words say neither on nor off: the light is switched over.
+  final bool? on;
 }
 
 final class NavigateCommand extends VoiceCommand {
@@ -68,12 +70,14 @@ final class UnknownCommand extends VoiceCommand {
   const UnknownCommand();
 }
 
-VoiceCommand parseVoiceCommand(String transcript) {
+/// [torchOn] says whether this app has the flashlight on, so that a short
+/// "關掉" or "關燈" right after switching it on still reaches the light.
+VoiceCommand parseVoiceCommand(String transcript, {bool torchOn = false}) {
   final text = normalizeTranscript(transcript);
   if (text.isEmpty) return const UnknownCommand();
 
   if (_torchWords.any(text.contains)) {
-    return FlashlightCommand(on: !_torchOffWords.any(text.contains));
+    return FlashlightCommand(on: _switchTo(text));
   }
   // Apps first, so "用 LINE 打給阿明" opens LINE instead of the phone dialer.
   final app = _findApp(text, _apps.keys.where((a) => a != PhoneApp.maps));
@@ -100,7 +104,17 @@ VoiceCommand parseVoiceCommand(String transcript) {
     final query = _trim(video.group(1)!, leading: _videoLead);
     if (query.isNotEmpty) return VideoSearchCommand(query);
   }
+  if (torchOn && _switchOffWords.any(text.contains)) {
+    return const FlashlightCommand(on: false);
+  }
   return const UnknownCommand();
+}
+
+/// Off wins over on, so "不要開" switches off. Null when neither is said.
+bool? _switchTo(String text) {
+  if (_switchOffWords.any(text.contains)) return false;
+  if (_switchOnWords.any(text.contains)) return true;
+  return null;
 }
 
 /// Lower-cases, folds full-width ASCII and a few Simplified characters, and
@@ -202,7 +216,12 @@ const _apps = {
 const _openVerbs = '打開|開啟|開|啟動|進入|叫出|點開|用|看|上';
 
 const _torchWords = ['手電筒', '手電仔', '手電', '電筒', '閃光燈', '電火'];
-const _torchOffWords = ['關', '熄', '暗', '不要', '免'];
+// Taiwanese switches a light off with 禁 ("電火禁掉"). 暗 is not here:
+// "好暗，開手電筒" asks for light.
+const _switchOffWords = [
+  '關', '熄', '禁', '滅', '不要', '不用', '免', '收起', '拿掉', '切掉', '夠了', //
+];
+const _switchOnWords = ['開', '亮', '點', '照'];
 
 const _callVerb = r'(?:打|撥|敲)';
 const _callSize = r'(?:一通|一個|個|通)?';
@@ -263,6 +282,6 @@ const _simplified = {
   '关': '關', '闪': '閃', '灯': '燈', '脸': '臉', '书': '書', '简': '簡', //
   '讯': '訊', '图': '圖', '听': '聽', '几': '幾', '点': '點', '号': '號', //
   '气': '氣', '时': '時', '间': '間', '拨': '撥', '联': '聯', '络': '絡', //
-  '启': '啟', '进': '進', '载': '載', '样': '樣', '这': '這', //
+  '启': '啟', '进': '進', '载': '載', '样': '樣', '这': '這', '灭': '滅', //
   '帮': '幫', '请': '請', '礼': '禮', '温': '溫', '妈': '媽', '儿': '兒', //
 };

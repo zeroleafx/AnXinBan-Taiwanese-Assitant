@@ -71,7 +71,11 @@ class DeviceRecordingBackend implements RecordingBackend {
 }
 
 class RecordingController extends ChangeNotifier {
-  RecordingController(this.backend, {this.transcribe}) {
+  RecordingController(
+    this.backend, {
+    this.transcribe,
+    this.autoTranscribe = true,
+  }) {
     _playbackSubscription = backend.playbackCompleted.listen((_) {
       isPlaying = false;
       _notify();
@@ -85,6 +89,7 @@ class RecordingController extends ChangeNotifier {
   }
 
   final RecordingBackend backend;
+  final bool autoTranscribe;
   Future<String> Function(String path)? transcribe;
 
   /// Called with each non-empty transcript, e.g. to run it as a command.
@@ -232,7 +237,7 @@ class RecordingController extends ChangeNotifier {
         } catch (_) {
           error = '新錄音已儲存，但舊錄音未能刪除，請重新開啟 App 再試一次。';
         }
-        if (_foreground) await _recognize(path);
+        if (_foreground && autoTranscribe) await _recognize(path);
       }
     } catch (_) {
       await _cancelSafely();
