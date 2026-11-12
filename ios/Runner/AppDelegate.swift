@@ -6,7 +6,7 @@ import UIKit
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let recognizer = BreezeRecognizer()
   private var torchWatch: NSKeyValueObservation?
-  private var torchLeaving: NSObjectProtocol?
+  private var torchDeactivating: NSObjectProtocol?
 
   override func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
     super.applicationDidReceiveMemoryWarning(application)
@@ -68,9 +68,12 @@ import UIKit
           }
         }
       }
-      if let old = torchLeaving { NotificationCenter.default.removeObserver(old) }
-      torchLeaving = NotificationCenter.default.addObserver(
-        forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
+      // System panels can deactivate the app without backgrounding it.
+      // Turn off our torch request before the system UI takes control.
+      // This also turns our light off for other interruptions, such as locking.
+      if let old = torchDeactivating { NotificationCenter.default.removeObserver(old) }
+      torchDeactivating = NotificationCenter.default.addObserver(
+        forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
       ) { _ in
         if device.torchMode == .on { AppDelegate.stopAskingForTorch(device) }
       }
