@@ -12,15 +12,83 @@ flutter run -d chrome
 Use `flutter devices` to find an Android device or emulator, then run
 `flutter run -d <device-id>`.
 
-The home page has a central microphone button, large Traditional Chinese text,
-and suggested voice commands. Tap the microphone to grant permission and start recording; tap again to save.
-The page displays elapsed time and offers playback of the latest recording.
+The home page fits one portrait screen without scrolling: a large microphone
+button, one short line of status text, and a card that shows example commands
+or the result of the last request. Tap the microphone to grant permission and
+start recording; tap again to save. The page shows the elapsed time while
+recording, and the result card can play the latest recording back.
+
+## Voice commands
+
+After Breeze transcribes a recording, `lib/voice_command.dart` turns the text
+into a phone action and `lib/phone_actions.dart` performs it:
+
+| Say (examples) | What happens |
+|---|---|
+| 幫我開 LINE、開 YouTube、上臉書、開地圖、看簡訊 | Opens the app (or says it is not installed) |
+| 打電話予阿明、打給女兒、給阿明打電話 | Finds the name in Contacts; asks which one if several match; dials |
+| 打 119、撥零九一二… | Dials the spoken number |
+| 開手電筒、手電筒關掉、手電筒禁掉；開著時只講「關掉」 | Turns the flashlight on or off; just 「手電筒」 switches it over. While it is on, an off button stays on screen |
+| 帶我去台北車站、郵局在哪裡 | Opens directions in Google Maps (Apple Maps if not installed) |
+| 我想聽鄧麗君的歌 | Searches YouTube |
+| 現在幾點、今天禮拜幾、今天會下雨嗎 | Shows the time or date; opens a weather search |
+
+The flashlight goes through the app's own channel `anxinban/torch`
+(`ios/Runner/AppDelegate.swift`, `android/.../TorchControl.kt`) rather than a
+plugin, so the app can also read whether the light is on. When the app comes
+back to the front it checks, so switching the light off from the control
+centre also updates the screen. On iOS the app also stops asking for the
+light once it goes dark outside the app or the app leaves the screen;
+otherwise iOS lights it again when the app comes back.
+
+iOS always asks before placing a call; Android opens the dialer with the
+number filled in. Calling by name needs the Contacts permission
+(`NSContactsUsageDescription` on iOS, `READ_CONTACTS` on Android); contacts
+are read on the phone only.
+
+## Speech model download (Android)
+
+When the Android build offers the `modelStatus` and `downloadModel` channel
+methods, the app asks before downloading the speech model: it shows the size,
+warns when the phone is not on Wi-Fi, shows progress, and continues an
+interrupted download. Users can defer setup to record without transcription.
+Android builds without these methods still download during the first
+transcription.
 On iOS/Android, recordings are saved as mono AAC .m4a files in the app documents
 directory. Only the latest recording is retained: after a new recording saves,
 previous recordings are deleted. Startup also removes older app recordings and
 restores the latest clip for playback. Going to the background stops recording.
-No audio is uploaded.
-Web recordings are session-only browser blobs. Speech recognition and phone
-actions are not connected yet.
+Mobile recognition runs on-device. On web, recording and playback stay local until the user selects the upload button.
+On iOS 16.4 or later, stopping a recording runs Breeze-ASR-26 GGML Q5 with whisper.cpp locally and shows its
+Chinese transcript. A restored recording can also be transcribed manually.
+The iOS build prepares the whisper.cpp runtime. On both iOS and Android,
+the app checks for the model at startup. If missing, it offers to download it
+with progress, resume and SHA-256 verification: GGML Q5 (1.08 GB) on iOS, the
+int8 LiteRT model (1.57 GB) on Android. Users can defer the download and record
+or play audio without transcription. Subsequent recordings work offline.
+Android runs Breeze-ASR-26 on LiteRT 2.3.0 (CPU, Kotlin CompiledModel API)
+rather than GGML Q5, because whisper.cpp's fast ARM kernels cover Q4_0/Q8_0
+but not Q5, so Q5 is much slower there.
+To preload an Android device during development:
+
+```sh
+adb shell mkdir -p /sdcard/Android/data/com.example.an_xin_ban/files
+adb push breeze_asr_26_30s_i8_kv256.tflite /sdcard/Android/data/com.example.an_xin_ban/files/
+```
+
+Android requires API 24+.
+Web recordings are session-only browser blobs.
 
 Android, iOS, and web scaffolds are included.
+
+
+### Web transcription on Hugging Face Spaces
+
+Deploy the contents of `space/` to a Docker Space on CPU Basic.
+Use its HTTPS app URL when building the Flutter web app:
+
+```sh
+flutter build web --dart-define=BREEZE_SPACE_URL=https://YOUR-SPACE.hf.space
+```
+
+With no URL configured, web remains recording/playback only.

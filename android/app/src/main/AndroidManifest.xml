@@ -1,5 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Finds the number when asked to call someone by name. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Downloads the Breeze speech model on first use. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Tells Wi-Fi from mobile data before that download. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:label="安心BAN"
         android:name="${applicationName}"
@@ -7,6 +13,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
