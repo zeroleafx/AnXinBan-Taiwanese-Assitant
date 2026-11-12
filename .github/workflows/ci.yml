@@ -57,11 +57,12 @@ jobs:
           cache: true
       - name: Install dependencies
         run: flutter pub get --enforce-lockfile
+      # Flutter generates the gitignored Gradle wrapper on a fresh checkout.
+      - name: Build Android APK
+        run: flutter build apk --release --no-pub
       - name: Test Android model downloader
         working-directory: android
         run: bash gradlew :app:testDebugUnitTest
-      - name: Build Android APK
-        run: flutter build apk --release --no-pub
 
   ios:
     name: iOS release build
