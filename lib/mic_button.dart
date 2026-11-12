@@ -100,7 +100,11 @@ class MicButton extends StatelessWidget {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
-                          busy ? Icons.graphic_eq_rounded : Icons.mic_rounded,
+                          recording
+                              ? Icons.stop_rounded
+                              : busy
+                              ? Icons.graphic_eq_rounded
+                              : Icons.mic_rounded,
                           key: ValueKey(state),
                           size: size * 0.42,
                           color: Colors.white,
