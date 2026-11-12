@@ -43,6 +43,10 @@ dependencies:
   audioplayers: ^6.8.1
   url_launcher: ^6.3.3
   flutter_contacts: ^2.6.0
+  geolocator: ^14.1.2
+  geocoding: ^5.0.1
+  shared_preferences: ^2.5.6
+  lunar: ^1.7.9
 
 dev_dependencies:
   flutter_test:

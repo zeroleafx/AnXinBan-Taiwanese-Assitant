@@ -8,6 +8,7 @@ import 'app_theme.dart';
 import 'assistant_controller.dart';
 import 'breeze_channel.dart';
 import 'contact_matcher.dart';
+import 'emergency_store.dart';
 import 'mic_button.dart';
 import 'web_transcription.dart';
 import 'phone_actions.dart';
@@ -36,10 +37,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _assistant = widget.assistant ?? AssistantController(DevicePhoneActions());
+    _assistant =
+        widget.assistant ??
+        AssistantController(
+          DevicePhoneActions(),
+          store: DeviceEmergencyStore(),
+        );
+    if (widget.assistant == null) unawaited(_assistant.initialize());
     _recording = widget.recording ?? _deviceRecording();
     _model = widget.model ?? SpeechModelController(_breeze);
-    _recording.onTranscript = _assistant.handle;
+    _recording.onTranscript = _onTranscript;
     _recording.addListener(_refresh);
     _assistant.addListener(_refresh);
     _model.addListener(_modelChanged);
@@ -109,9 +116,35 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   bool get _busy => _recording.recognizing || _assistant.working;
 
+  /// True from pressing SOS until the person asks for speech again.
+  bool _helpAsked = false;
+
+  Future<void> _onTranscript(String heard) async {
+    // Something said before SOS was pressed must not replace the help card.
+    if (!_helpAsked) await _assistant.handle(heard);
+  }
+
+  /// The SOS button works without speech, so also before the model is there.
+  void _askForHelp() {
+    unawaited(HapticFeedback.heavyImpact());
+    _helpAsked = true;
+    unawaited(_recording.cancel());
+    unawaited(_assistant.showEmergency());
+  }
+
+  /// From the download screen, SOS opens the home screen with the help card;
+  /// the download stays one tap away there.
+  void _askForHelpBeforeModel() {
+    setState(() => _deferred = true);
+    _askForHelp();
+  }
+
   void _tapMic() {
     unawaited(HapticFeedback.mediumImpact());
-    if (!_recording.isRecording) _assistant.clear();
+    if (!_recording.isRecording) {
+      _helpAsked = false;
+      _assistant.clear();
+    }
     unawaited(_recording.toggle());
   }
 
@@ -135,26 +168,38 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (!_deferred && _model.phase != ModelPhase.ready) {
       return Scaffold(
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 380),
-                child: _model.phase == ModelPhase.checking
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _modelPanel(),
-                          if (_model.phase != ModelPhase.downloading)
-                            TextButton(
-                              onPressed: () => setState(() => _deferred = true),
-                              child: const Text('稍後下載，先使用錄音'),
-                            ),
-                        ],
-                      ),
+          child: Column(
+            children: [
+              // SOS needs no speech model, so it is here too.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: _TopBar(onHelp: _askForHelpBeforeModel),
               ),
-            ),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: _model.phase == ModelPhase.checking
+                          ? const Center(child: CircularProgressIndicator())
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _modelPanel(),
+                                if (_model.phase != ModelPhase.downloading)
+                                  TextButton(
+                                    onPressed: () =>
+                                        setState(() => _deferred = true),
+                                    child: const Text('稍後下載，先使用錄音'),
+                                  ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -184,7 +229,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     .clamp(120.0, 196.0);
                 return Column(
                   children: [
-                    const _TopBar(),
+                    _TopBar(onHelp: _assistant.working ? null : _askForHelp),
                     if (_deferred &&
                         _model.phase != ModelPhase.ready &&
                         !_recording.isRecording)
@@ -275,30 +320,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         title: outcome.title,
         detail: outcome.detail,
         heard: choosing ? null : outcome.heard,
-        trailing: choosing ? null : _replayButton(),
-        gap: choosing ? 8 : 12,
+        trailing: choosing
+            ? null
+            : outcome.heard == null
+            ? _closeButton()
+            : _replayButton(),
+        gap: choosing || outcome.buttons.length > 2 ? 8 : 12,
         children: [
           if (outcome.showExamples) const _Examples(),
           for (final contact in outcome.choices)
             _ContactButton(
               contact: contact,
-              onPressed: () => _assistant.call(contact),
+              onPressed: () => _assistant.choose(contact),
             ),
-          if (outcome.action case final action?)
+          for (final button in outcome.buttons)
             _CardButton(
-              icon: switch (action) {
-                OutcomeAction.torchOff => Icons.flashlight_off_rounded,
-                OutcomeAction.openSettings => Icons.settings_rounded,
-              },
-              label: switch (action) {
-                OutcomeAction.torchOff => '關掉手電筒',
-                OutcomeAction.openSettings => '打開設定',
-              },
-              onPressed: () => _assistant.runAction(action),
+              icon: button.icon,
+              label: button.label,
+              kind: button.kind,
+              onPressed: () => _assistant.press(button),
             ),
         ],
       );
     }
+    if (_model.blocksSpeech) return _modelPanel();
     final canRetry =
         recording.speechError != null &&
         recording.lastPath != null &&
@@ -316,7 +361,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _CardButton(
             icon: Icons.refresh_rounded,
             label: kIsWeb ? '重新上傳並辨識' : '再試一次',
-            onPressed: recording.recognizeLatest,
+            onPressed: () {
+              _helpAsked = false;
+              unawaited(recording.recognizeLatest());
+            },
           ),
         ],
       );
@@ -352,7 +400,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _CardButton(
             icon: Icons.flashlight_off_rounded,
             label: '關掉手電筒',
-            onPressed: () => _assistant.runAction(OutcomeAction.torchOff),
+            onPressed: _assistant.switchTorchOff,
           ),
         ],
       );
@@ -425,6 +473,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  /// Cards that did not come from speech have nothing to replay.
+  Widget _closeButton() => IconButton.filledTonal(
+    tooltip: '關閉',
+    iconSize: 26,
+    style: IconButton.styleFrom(
+      backgroundColor: AppColors.cream,
+      foregroundColor: AppColors.ink,
+      minimumSize: const Size.square(48),
+    ),
+    onPressed: _assistant.clear,
+    icon: const Icon(Icons.close_rounded),
+  );
+
   Widget? _replayButton() {
     final recording = _recording;
     if (recording.lastPath == null || recording.isRecording) return null;
@@ -445,7 +506,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar();
+  const _TopBar({required this.onHelp});
+
+  /// Opens the help card. Always on screen, so help never depends on speech.
+  final VoidCallback? onHelp;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -462,13 +526,37 @@ class _TopBar extends StatelessWidget {
           child: const Icon(Icons.spa_rounded, color: AppColors.green),
         ),
         const SizedBox(width: 10),
-        const Text(
-          '安心BAN',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
-            letterSpacing: 0.5,
+        // The name gives way on narrow screens; the help button never does.
+        const Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '安心BAN',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton.icon(
+          onPressed: onHelp,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.coral,
+            disabledBackgroundColor: AppColors.coral.withValues(alpha: 0.5),
+            foregroundColor: Colors.white,
+            disabledForegroundColor: Colors.white,
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+          ),
+          icon: const Icon(Icons.sos_rounded, size: 26),
+          label: const Text(
+            '求救',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
         ),
       ],
@@ -584,9 +672,9 @@ class _Examples extends StatelessWidget {
       SizedBox(height: 12),
       Row(
         children: [
-          Expanded(child: _Hint(Icons.flashlight_on_rounded, '開手電筒')),
+          Expanded(child: _Hint(Icons.location_on_rounded, '我在哪裡')),
           SizedBox(width: 10),
-          Expanded(child: _Hint(Icons.near_me_rounded, '帶我去車站')),
+          Expanded(child: _Hint(Icons.flashlight_on_rounded, '開手電筒')),
         ],
       ),
     ],
@@ -747,21 +835,48 @@ class _CardButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.kind = ButtonKind.primary,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final ButtonKind kind;
 
   @override
-  Widget build(BuildContext context) => FilledButton.icon(
-    onPressed: onPressed,
-    icon: Icon(icon, size: 24),
-    label: Text(
-      label,
+  Widget build(BuildContext context) {
+    final icon = Icon(this.icon, size: 24);
+    final label = Text(
+      this.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-    ),
-  );
+    );
+    return switch (kind) {
+      ButtonKind.quiet => OutlinedButton.icon(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(54),
+          shape: const StadiumBorder(),
+          side: BorderSide(color: AppColors.green.withValues(alpha: 0.6)),
+          foregroundColor: AppColors.green,
+        ),
+        icon: icon,
+        label: label,
+      ),
+      ButtonKind.urgent => FilledButton.icon(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(backgroundColor: AppColors.coral),
+        icon: icon,
+        label: label,
+      ),
+      ButtonKind.primary => FilledButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: label,
+      ),
+    };
+  }
 }
 
 class _ContactButton extends StatelessWidget {

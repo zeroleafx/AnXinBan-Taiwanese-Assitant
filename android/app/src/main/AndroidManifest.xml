@@ -2,6 +2,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Finds the number when asked to call someone by name. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Tells where the phone is ("我在哪裡") and writes it into a message. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Downloads the Breeze speech model on first use. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Tells Wi-Fi from mobile data before that download. -->
@@ -48,6 +51,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Lets voice commands find and open the apps on the home screen. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
         </intent>
     </queries>
 </manifest>

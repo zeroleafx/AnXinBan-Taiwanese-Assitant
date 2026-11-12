@@ -6,12 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:an_xin_ban/assistant_controller.dart';
 import 'package:an_xin_ban/contact_matcher.dart';
+import 'package:an_xin_ban/emergency_store.dart';
 import 'package:an_xin_ban/home_page.dart';
 import 'package:an_xin_ban/main.dart';
-import 'package:an_xin_ban/phone_actions.dart';
+import 'package:an_xin_ban/place.dart';
 import 'package:an_xin_ban/recording_controller.dart';
 import 'package:an_xin_ban/speech_model.dart';
 import 'package:an_xin_ban/voice_command.dart';
+
+import 'support/fake_phone.dart';
+
+const daughter = ContactEntry(name: '女兒', numbers: ['0911-111-111']);
 
 class QuietBackend implements RecordingBackend {
   @override
@@ -41,47 +46,6 @@ class QuietBackend implements RecordingBackend {
     await _states.close();
     await _done.close();
   }
-}
-
-class Phone implements PhoneActions {
-  final opened = <PhoneApp>[];
-  final dialed = <String>[];
-  @override
-  Future<bool> openApp(PhoneApp app) async {
-    opened.add(app);
-    return true;
-  }
-
-  @override
-  Future<bool> dial(String number) async {
-    dialed.add(number);
-    return true;
-  }
-
-  @override
-  Future<ContactsAccess> loadContacts() async => const ContactsAccess.granted([
-    ContactEntry(name: '王小明', numbers: ['0912-345-678']),
-    ContactEntry(name: '陳志明', numbers: ['0933-222-111']),
-    ContactEntry(name: '林明華', numbers: ['0988-765-432']),
-  ]);
-  bool? torch;
-  @override
-  Future<bool> setTorch({required bool on}) async {
-    torch = on;
-    return true;
-  }
-
-  @override
-  Future<bool?> torchIsOn() async => torch ?? false;
-
-  @override
-  Future<bool> navigate(String place) async => true;
-  @override
-  Future<bool> searchVideo(String query) async => true;
-  @override
-  Future<bool> searchWeb(String query) async => true;
-  @override
-  Future<void> openSettings() async {}
 }
 
 /// An Android phone whose speech model is not downloaded yet.
@@ -118,15 +82,17 @@ class ModelStore implements SpeechModelBackend {
 }
 
 void main() {
-  late Phone phone;
+  late FakePhone phone;
+  late MemoryEmergencyStore store;
   late AssistantController assistant;
   late RecordingController recording;
   SpeechModelController? model;
   var heard = '';
 
   setUp(() {
-    phone = Phone();
-    assistant = AssistantController(phone);
+    phone = FakePhone();
+    store = MemoryEmergencyStore();
+    assistant = AssistantController(phone, store: store);
     recording = RecordingController(
       QuietBackend(),
       transcribe: (_) async => heard,
@@ -155,6 +121,13 @@ void main() {
       ),
     );
     await tester.pump();
+  }
+
+  /// Taps and lets the card that follows finish appearing.
+  Future<void> press(WidgetTester tester, Finder target) async {
+    await tester.tap(target);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
   }
 
   Future<void> say(WidgetTester tester, String words) async {
@@ -193,8 +166,101 @@ void main() {
       expect(find.text('這句我還不會'), findsOneWidget);
       await say(tester, '開手電筒');
       expect(find.text('關掉手電筒'), findsOneWidget);
+
+      await say(tester, '我在哪裡');
+      expect(find.text('你在這裡'), findsOneWidget);
+      expect(find.text('彰化縣彰化市中山路三段185巷16號'), findsOneWidget);
+
+      await press(tester, find.text('求救'));
+      expect(find.text('需要幫忙嗎？'), findsOneWidget);
+      expect(find.text('設定緊急聯絡人'), findsOneWidget);
+
+      store.contact = daughter;
+      await assistant.initialize();
+      await say(tester, '救命');
+      expect(find.text('正在打給 女兒'), findsOneWidget);
+      expect(find.text('把位置傳給 女兒'), findsOneWidget);
     });
   }
+
+  testWidgets('the SOS button offers help without any speech', (tester) async {
+    store.contact = daughter;
+    await assistant.initialize();
+    await open(tester, const Size(393, 852));
+    await press(tester, find.text('求救'));
+    expect(phone.dialed, isEmpty, reason: 'a tap alone calls no one');
+
+    await press(tester, find.text('打給 女兒'));
+    expect(phone.dialed, ['0911-111-111']);
+
+    await press(tester, find.text('把位置傳給 女兒'));
+    expect(phone.texts.single.$2, startsWith('我需要幫忙。我在這裡：'));
+    expect(find.text('把位置傳給 女兒'), findsOneWidget);
+  });
+
+  testWidgets('pressing SOS drops what was being said', (tester) async {
+    final slow = Completer<String>();
+    recording.dispose();
+    recording = RecordingController(
+      QuietBackend(),
+      transcribe: (_) => slow.future,
+    );
+    await open(tester, const Size(393, 852));
+
+    // While still recording: the recording is thrown away.
+    await tester.tap(find.bySemanticsLabel('開始錄音'));
+    await tester.pump();
+    await press(tester, find.text('求救'));
+    expect(recording.isRecording, false);
+    expect(find.text('需要幫忙嗎？'), findsOneWidget);
+    await press(tester, find.byTooltip('關閉'));
+
+    // While the words are being recognized: their result is ignored.
+    await tester.tap(find.bySemanticsLabel('開始錄音'));
+    await tester.pump();
+    await tester.tap(find.bySemanticsLabel('停止錄音'));
+    await tester.pump();
+    await press(tester, find.text('求救'));
+    slow.complete('幫我開LINE');
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('需要幫忙嗎？'), findsOneWidget);
+    expect(phone.opened, isEmpty);
+  });
+
+  testWidgets('help is there before the speech model is, and can be closed', (
+    tester,
+  ) async {
+    model = SpeechModelController(ModelStore(ModelNetwork.unmetered));
+    await open(tester, const Size(393, 852));
+    expect(find.text('先下載語音模型'), findsOneWidget);
+
+    await press(tester, find.text('求救'));
+    expect(find.text('打 119'), findsOneWidget);
+    await press(tester, find.text('打 119'));
+    expect(phone.dialed, ['119']);
+
+    await press(tester, find.byTooltip('關閉'));
+    expect(find.text('先下載語音模型'), findsOneWidget);
+  });
+
+  testWidgets('sending my location to one of several matches', (tester) async {
+    await open(tester, const Size(393, 852));
+    await say(tester, '把位置傳給阿明');
+    expect(find.text('要傳給哪一位？'), findsOneWidget);
+    await press(tester, find.text('陳志明'));
+    expect(phone.texts.single.$1, '0933-222-111');
+    expect(phone.dialed, isEmpty);
+    expect(find.text('把位置傳給 陳志明'), findsOneWidget);
+  });
+
+  testWidgets('a location problem offers the way to fix it', (tester) async {
+    phone.location = const LocationOff();
+    await open(tester, const Size(393, 852));
+    await say(tester, '我在哪裡');
+    await press(tester, find.text('打開定位'));
+    expect(phone.locationSettingsOpened, 1);
+  });
 
   for (final (name, size) in [
     ('small phone', const Size(320, 568)),
