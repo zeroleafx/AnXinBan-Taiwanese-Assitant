@@ -252,6 +252,20 @@ class RecordingController extends ChangeNotifier {
     }
   }
 
+  /// Stops recording and throws the recording away, without recognizing it.
+  Future<void> cancel() async {
+    if (busy || !isRecording || _disposed) return;
+    busy = true;
+    _notify();
+    _limitTimer?.cancel();
+    await _cancelSafely();
+    _watch.stop();
+    _timer?.cancel();
+    isRecording = false;
+    busy = false;
+    _notify();
+  }
+
   Future<void> togglePlayback() async {
     if (busy || isRecording || lastPath == null || _disposed) return;
     busy = true;

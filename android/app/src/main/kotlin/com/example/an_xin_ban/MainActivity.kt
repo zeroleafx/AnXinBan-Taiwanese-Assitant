@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
   override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
     super.configureFlutterEngine(flutterEngine)
     TorchControl.register(this, flutterEngine)
+    AppLauncher.register(this, flutterEngine)
     val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "anxinban/breeze")
     val main = Handler(Looper.getMainLooper())
     val speech = recognizer ?: BreezeRecognizer(applicationContext).also { recognizer = it }

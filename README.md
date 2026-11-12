@@ -26,12 +26,18 @@ into a phone action and `lib/phone_actions.dart` performs it:
 | Say (examples) | What happens |
 |---|---|
 | 幫我開 LINE、開 YouTube、上臉書、開地圖、看簡訊 | Opens the app (or says it is not installed) |
+| 打開相機、打開相簿、開 Instagram | Android: any installed app, by the name under its icon. iOS: a short list of apps with a known link |
 | 打電話予阿明、打給女兒、給阿明打電話 | Finds the name in Contacts; asks which one if several match; dials |
-| 打 119、撥零九一二… | Dials the spoken number |
+| 打 119、撥零九一二…、叫救護車、報警 | Dials the spoken number, 119 or 110 |
+| 救命、我跌倒了 | Calls the emergency contact and shows the help card (also behind the SOS button, which calls no one by itself): call the contact, call 119, send the location |
+| 把女兒設成緊急聯絡人、設定緊急聯絡人、取消緊急聯絡人 | Chooses who is called first in an emergency; saved on the phone |
+| 我在哪裡 | Shows the street address, with a button to open the map |
+| 把我的位置傳給女兒、分享我的位置、用 LINE 傳我的位置 | Opens a text message to that contact (or LINE's "share with" screen) with the address and a map link filled in |
+| 傳簡訊給阿明說我晚一點到、用 LINE 跟女兒說我到了 | Opens the message with the words filled in |
 | 開手電筒、手電筒關掉、手電筒禁掉；開著時只講「關掉」 | Turns the flashlight on or off; just 「手電筒」 switches it over. While it is on, an off button stays on screen |
 | 帶我去台北車站、郵局在哪裡 | Opens directions in Google Maps (Apple Maps if not installed) |
 | 我想聽鄧麗君的歌 | Searches YouTube |
-| 現在幾點、今天禮拜幾、今天會下雨嗎 | Shows the time or date; opens a weather search |
+| 現在幾點、今天禮拜幾、今天農曆幾號、今天會下雨嗎 | Shows the time, the date or the lunar date; opens a weather search |
 
 The flashlight goes through the app's own channel `anxinban/torch`
 (`ios/Runner/AppDelegate.swift`, `android/.../TorchControl.kt`) rather than a
@@ -42,9 +48,13 @@ light once it goes dark outside the app or the app leaves the screen;
 otherwise iOS lights it again when the app comes back.
 
 iOS always asks before placing a call; Android opens the dialer with the
-number filled in. Calling by name needs the Contacts permission
+number filled in. Messages are only written: the person presses send.
+Calling by name needs the Contacts permission
 (`NSContactsUsageDescription` on iOS, `READ_CONTACTS` on Android); contacts
-are read on the phone only.
+are read on the phone only. The location is read only when one of the
+commands above asks for it (`NSLocationWhenInUseUsageDescription` on iOS,
+`ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` on Android); the phone's
+own geocoder turns it into an address.
 
 ## Speech model download (Android)
 
